@@ -1,6 +1,5 @@
 # User Settings
 .virtual_documents
-samples
 data/*
 test/*
 *.wav
@@ -179,3 +178,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+!data
+!data/samples
+!data/samples/a_cat_n_stepping_wood.wav
+!data/samples/A_cat_meowing.wav
