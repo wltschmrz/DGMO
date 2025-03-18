@@ -8,6 +8,10 @@ src_dir = os.path.join(proj_dir, 'src_audioldm')
 sys.path.extend([proj_dir, src_dir])
 import torch
 import torch.nn as nn
+from src.models.audioldm import AudioLDM
+from src.models.mask import Mask
+from src.data_processing import AudioDataProcessor
+from src.utils import load_config
 
 class DGMO(nn.module):
     def __init__(self, config_path=None, *, device=None, **kwargs):
@@ -18,13 +22,15 @@ class DGMO(nn.module):
         config.update(kwargs)
         self._apply_config(config)
         
-        
-        
-        
+        ldm_config = load_config(self.ldm_config_path) if self.ldm_config_path else {}
+        for key, value in ldm_config.items():
+            if key == "repo_id":
+                setattr(self, key, value)
+
         
         self.ldm = AudioLDM()
         self.mask = Mask()
-        self.processor = AudioDataProcessor()
+        self.processor = AudioDataProcessor(device=self.device, config_path=ldm_config)
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.mask.parameters(), lr=learning_rate)
         self.device = self.ldm.device
