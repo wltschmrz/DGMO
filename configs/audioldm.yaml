@@ -1,0 +1,41 @@
+# AudioLDM data preprocessing config
+# ⚠️ Notes:
+# - Keep variable names consistent with the code (e.g., sampling_rate → self.sampling_rate)
+# - Use integers or floats for numerical values
+# - Avoid duplicate keys (last value will overwrite)
+# - Ensure new variables are supported in the code
+# - Code may override values via kwargs (e.g., sampling_rate=44100)
+
+precision: "high"
+
+preprocessing:
+  repo_id: "cvssp/audioldm"
+  audio:
+    sampling_rate: 16000
+    duration: 10.24
+    max_wav_value: 32768.0
+  stft:
+    target_length: 1024
+    filter_length: 1024
+    hop_length: 160
+    win_length: 1024
+  mel:
+    mel_bins: 64
+    mel_fmin: 0
+    mel_fmax: 8000
+
+# preprocessing:
+#   repo_id: "auffusion/auffusion"
+#   audio:
+#     sampling_rate: 16000
+#     duration: 10.24
+#     max_wav_value: 32768.0
+#   stft:
+#     target_length: 1024
+#     filter_length: 2048
+#     hop_length: 160
+#     win_length: 1024
+#   mel:
+#     mel_bins: 256
+#     mel_fmin: 0
+#     mel_fmax: 8000

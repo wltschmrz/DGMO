@@ -1,0 +1,13 @@
+matplotlib
+transformers
+diffusers
+einops
+accelerate
+scikit-image
+opencv-contrib-python
+rp
+torchaudio
+librosa
+
+# apt-get update
+# apt-get install -y libgl1-mesa-glx libglib2.0-0
