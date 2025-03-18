@@ -1,0 +1,20 @@
+# DGMO pipeline config
+# ⚠️ Notes:
+# - Keep variable names consistent with the code (e.g., learning_rate → self.learning_rate)
+# - Use integers or floats for numerical values
+# - Avoid duplicate keys (last value will overwrite)
+# - Ensure new variables are supported in the code
+# - Code may override values via kwargs (e.g., sampling_rate=44100)
+
+learning_rate: 0.001
+ddim_batchsize: 4
+epochs: 100
+iter: 2
+inversion_strength: 0.7
+ddim_steps: 25
+ldm_config_path: "/configs/audioldm.yaml"
+text: "A cat meowing"
+
+
+
+

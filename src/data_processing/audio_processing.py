@@ -43,7 +43,19 @@ class AudioDataProcessor():
             self.hann_window[f"{device}"] = torch.hann_window(self.win_length).to(device)  # ts[win_length] = [1024]
 
         if self.repo_id == "cvssp/audioldm":
-            print("start assertions")
+            print("preprocessing for audioldm")
+            assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
+            assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
+            assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
+            assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
+        elif self.repo_id == "cvssp/audioldm2":
+            print("preprocessing for audioldm2")
+            assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
+            assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
+            assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
+            assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
+        elif self.repo_id == "auffusion/auffusion":
+            print("preprocessing for auffusion")
             assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
             assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
             assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
@@ -84,13 +96,14 @@ class AudioDataProcessor():
         normalized = centered * MAX_AMPLITUDE / (self.wav_max + EPSILON)
         return normalized    # in [-0.5,0.5]
 
-    def denormalize_wav(self, normed_wav):  # [1,N] → [1,N]
+    def denormalize_wav(self, normed_wav, factor_removal=True):  # [1,N] → [1,N]
         AMPLITUDED = 2
         EPSILON = 1e-8
         centered = normed_wav * AMPLITUDED * (self.wav_max + EPSILON)
         origin_wav = centered + self.norm_shifting
-        self.norm_shifting = None
-        self.wav_max = None
+        if factor_removal:
+            self.norm_shifting = None
+            self.wav_max = None
         return origin_wav
 
     def spectral_normalize_torch(self, magnitudes, C=1, CLIP_VAL=1e-5):  # dynamic_range_compression
@@ -169,7 +182,7 @@ class AudioDataProcessor():
         return spec[None, None, ...]  # [1, 1, T*, M*]
     
     # stft → wav' → wav
-    def inverse_stft(self, stft_mag, stft_complex):  # ts[1,F,T], ts[1,F,T] → ts[1,N]
+    def inverse_stft(self, stft_mag, stft_complex, fac_rm=True):  # ts[1,F,T], ts[1,F,T] → ts[1,N]
         assert stft_mag.shape == stft_complex.shape
         assert stft_mag.shape[1:] == (self.n_freq, self.n_times), f"{stft_mag.shape}"
         if stft_mag.shape[-1] < self.spec_length:
@@ -206,39 +219,47 @@ class AudioDataProcessor():
         # else:
         #     # 혹시 길이가 매우 짧다면 예외처리
         #     estimated_wav = estimated_wav[..., 0:1]
-        wav = self.reconst_wav(estimated_wav.unsqueeze(0))  # ts[1,N] → np[1,N]
+        wav = self.reconst_wav(estimated_wav.unsqueeze(0), factor_rm=fac_rm)  # ts[1,N] → np[1,N]
         return wav  # np[1,N]
     
     # wav' → wav
-    def reconst_wav(self, wav):  # ts[1,N] → np[1,N]
+    def reconst_wav(self, wav, factor_rm=True):  # ts[1,N] → np[1,N]
         wav = wav.detach().cpu().numpy()
         assert self.norm_shifting is not None and self.wav_max is not None, "Normalization params should be set"
         assert wav.shape[0] == 1, f"Waveform shape is not [1,N], but {wav.shape}"
-        wav = self.denormalize_wav(wav)  # UN centering & normalizing
+        wav = self.denormalize_wav(wav, factor_removal=factor_rm)  # UN centering & normalizing
         return wav  # np[1,N]
     
 if __name__ == "__main__":
+    from src.utils.eval_utils import calculate_sdr, calculate_sisdr
+    
     config_path = "configs/audioldm.yaml"
     audio_processor = AudioDataProcessor(config_path=config_path, device="cuda")
-    wav = audio_processor.read_wav_file('data/samples/A_cat_meowing.wav')  # np[1,N]
-    wav = audio_processor.prepare_wav(wav)  # ts[1,N]
-    print(wav.shape)
-    _wav = audio_processor.reconst_wav(wav)  # np[1,N]
-    print(_wav.shape)
+    ori_wav = audio_processor.read_wav_file('data/samples/A_cat_meowing.wav')  # np[1,N]
+    
+    sdr = calculate_sdr(ori_wav, ori_wav)
+    sisdr = calculate_sisdr(ori_wav, ori_wav)
 
-    from src.utils.eval_utils import calculate_sdr, calculate_sisdr
+    print(">> Original: \n", sdr, sisdr)
+    
+    wav = audio_processor.prepare_wav(ori_wav)  # ts[1,N]
+    _wav = audio_processor.reconst_wav(wav, factor_rm=False)  # np[1,N]
+    assert ori_wav.shape == _wav.shape, f"{ori_wav.shape}, {_wav.shape}"
+    assert ori_wav.dtype == _wav.dtype, f"{ori_wav.dtype}, {_wav.dtype}"
 
-    print(wav.dtype)
-    print(_wav.dtype)
+    sdr_ = calculate_sdr(ori_wav, _wav)
+    sisdr_ = calculate_sisdr(ori_wav, _wav)
 
-    sisdr = calculate_sisdr(wav, _wav)
-    sdr = calculate_sdr(wav, _wav)
-
-    print(sisdr, sdr)
-
+    print(">> Norm & Denorm: \n", sdr_, sisdr_)
 
     stft_mag, stft_complex = audio_processor.wav_to_stft(wav)  # ts[1,F,T], ts[1,F,T]
     mel_spec = audio_processor.stft_to_mel(stft_mag)  # ts[1,M,T]
     vae_input = audio_processor.preprocess_spec(mel_spec)  # ts[1,1,T*,M*]
-    __wav = audio_processor.inverse_stft(stft_mag, stft_complex)  # np[1,N]
-    print(__wav.shape)
+    __wav = audio_processor.inverse_stft(stft_mag, stft_complex, fac_rm=True)  # np[1,N]
+    assert ori_wav.shape == __wav.shape, f"{ori_wav.shape}, {__wav.shape}"
+    assert ori_wav.dtype == __wav.dtype, f"{ori_wav.dtype}, {__wav.dtype}"
+
+    sdr__ = calculate_sdr(ori_wav, __wav)
+    sisdr__ = calculate_sisdr(ori_wav, __wav)
+
+    print(">> Norm + stft & istft + Denorm: \n", sdr__, sisdr__)

@@ -7,9 +7,8 @@
 # - Code may override values via kwargs (e.g., sampling_rate=44100)
 
 precision: "high"
-
+repo_id: "cvssp/audioldm"
 preprocessing:
-  repo_id: "cvssp/audioldm"
   audio:
     sampling_rate: 16000
     duration: 10.24
