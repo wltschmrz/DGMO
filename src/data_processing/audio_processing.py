@@ -1,11 +1,43 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import numpy as np
 import torch
 import torchaudio
 from librosa.filters import mel as librosa_mel_fn
 from src.utils.file_utils import load_config
+
+def segment_wav(waveform, target_length, start=0):  # [1,N+] → [1,N]
+    sample_length = waveform.shape[-1]
+    assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
+    if sample_length <= target_length:  # too short
+        return waveform
+    elif sample_length > target_length:  # segmentation
+        return waveform[:, start : start + target_length]
+
+def pad_wav(waveform, target_length):  # [1,N-] → [1,N]
+    sample_length = waveform.shape[-1]
+    assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
+    if sample_length == target_length:  # if same length
+        return waveform
+    elif sample_length > target_length:  # padding
+        padded_wav = torch.zeros((1, target_length))
+        padded_wav[:, :sample_length] = waveform
+        return padded_wav
+
+# fname → wav
+def read_wav_file(filename, duration, target_sr):  # fname → np[1,N]
+    # 1. file load
+    wav, ori_sr = torchaudio.load(filename, normalize=True)  # ts[C,N'±]
+    # 2. to mono channel
+    wav = wav.mean(dim=0) if wav.shape[0] > 1 else wav  # ts[1,N'±]
+    # 2. segment & padding (to target length)
+    target_t = int(ori_sr * duration)
+    wav = segment_wav(wav, target_t)  # ts[1,N'-]
+    wav = pad_wav(wav, target_t)      # ts[1,N']
+    # 3. resampling
+    wav = torchaudio.functional.resample(wav, ori_sr, target_sr)  # ts[1,N]
+    return wav.numpy()  # np[1,N]
+
+def save_wav_file(filename, wav, sr):
+    torchaudio.save(filename, wav, sr)
 
 class AudioDataProcessor():
     def __init__(self, *, config_path=None, device=None, **kwargs):
@@ -46,23 +78,23 @@ class AudioDataProcessor():
             self.hann_window[f"{device}"] = torch.hann_window(self.win_length).to(device)  # ts[win_length] = [1024]
 
         if self.repo_id == "cvssp/audioldm":
-            print("preprocessing for audioldm")
             assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
             assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
             assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
             assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
+            print("[INFO] audio_processing.py: set for AudioLDM")
         elif self.repo_id == "cvssp/audioldm2":
-            print("preprocessing for audioldm2")
             assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
             assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
             assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
             assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
+            print("[INFO] audio_processing.py: set for AudioLDM2")
         elif self.repo_id == "auffusion/auffusion":
-            print("preprocessing for auffusion")
             assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
             assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
             assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
             assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
+            print("[INFO] audio_processing.py: set for Auffusion")
 
     def _apply_config(self, config):
         for key, value in config.items():
@@ -70,24 +102,6 @@ class AudioDataProcessor():
                 self._apply_config(value)
             else:
                 setattr(self, key, value)
-
-    def segment_wav(self, waveform, target_length, start=0):  # [1,N+] → [1,N]
-        sample_length = waveform.shape[-1]
-        assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
-        if sample_length <= target_length:  # too short
-            return waveform
-        elif sample_length > target_length:  # segmentation
-            return waveform[:, start : start + target_length]
-    
-    def pad_wav(self, waveform, target_length):  # [1,N-] → [1,N]
-        sample_length = waveform.shape[-1]
-        assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
-        if sample_length == target_length:  # if same length
-            return waveform
-        elif sample_length > target_length:  # padding
-            padded_wav = torch.zeros((1, target_length))
-            padded_wav[:, :sample_length] = waveform
-            return padded_wav
 
     def normalize_wav(self, waveform):  # [1,N] → [1,N]
         MAX_AMPLITUDE = 0.5
@@ -120,8 +134,8 @@ class AudioDataProcessor():
         wav = wav.mean(dim=0) if wav.shape[0] > 1 else wav  # ts[1,N'±]
         # 2. segment & padding (to target length)
         target_t = int(ori_sr * self.duration)
-        wav = self.segment_wav(wav, target_t)  # ts[1,N'-]
-        wav = self.pad_wav(wav, target_t)      # ts[1,N']
+        wav = segment_wav(wav, target_t)  # ts[1,N'-]
+        wav = pad_wav(wav, target_t)      # ts[1,N']
         # 3. resampling
         wav = torchaudio.functional.resample(wav, ori_sr, self.sampling_rate)  # ts[1,N]
         return wav.numpy()  # np[1,N]
@@ -214,7 +228,6 @@ class AudioDataProcessor():
                 onesided=True
             )
         
-        print(estimated_wav.shape)
         # # forward에서 reflect pad를 (pad_size, pad_size)만큼 했었으므로 앞뒤로 pad_size samples씩 잘라낸다.
         # pad_size = self.pad_size
         # if estimated_wav.shape[-1] > pad_size*2:
@@ -232,8 +245,13 @@ class AudioDataProcessor():
         assert wav.shape[0] == 1, f"Waveform shape is not [1,N], but {wav.shape}"
         wav = self.denormalize_wav(wav, factor_removal=factor_rm)  # UN centering & normalizing
         return wav  # np[1,N]
-    
+
+
+
 if __name__ == "__main__":
+    import sys
+    import os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
     from src.utils.eval_utils import calculate_sdr, calculate_sisdr
     
     config_path = "configs/audioldm.yaml"

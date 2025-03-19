@@ -89,7 +89,7 @@ schedular_config = """
 """
 
 class AudioLDM(nn.Module):
-    def __init__(self, device='cuda', ckpt="cvssp/audioldm", config=None):
+    def __init__(self, ckpt="cvssp/audioldm", config=None, device='cuda'):
         super().__init__()
         self.device = torch.device(device)
         pipe = AudioLDMPipeline.from_pretrained(ckpt, use_safetensors=False)
@@ -210,7 +210,7 @@ class AudioLDM(nn.Module):
         return waveform  # ts[B,163872]
 
     @torch.no_grad()
-    def ddim_noising(  # ts[B, C:8, lT:256, lM:16] -> ts[B, C:8, lT:256, lM:16]
+    def noising(  # ts[B, C:8, lT:256, lM:16] -> ts[B, C:8, lT:256, lM:16]
         self,
         latents: torch.Tensor,
         num_inference_steps: int = 50,
@@ -245,7 +245,7 @@ class AudioLDM(nn.Module):
         return noisy_latents
 
     @torch.no_grad()
-    def ddim_denoising(  # ts[B, C:8, lT:256, lM:16] -> ts[B, C:8, lT:256, lM:16]
+    def denoising(  # ts[B, C:8, lT:256, lM:16] -> ts[B, C:8, lT:256, lM:16]
         self,
         latents: torch.Tensor,
         prompt_embeds: torch.Tensor,
@@ -348,8 +348,7 @@ class AudioLDM(nn.Module):
             latents = (latents - (1-alpha_t).sqrt()*noise_pred)*(alpha_t_next.sqrt()/alpha_t.sqrt()) + (1-alpha_t_next).sqrt()*noise_pred
         return latents
 
-
-    def ddim_editing(  # ts[B, 1, T:1024, M:64] -> mel/wav
+    def noise_editing(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
         text: Union[str, List[str]],
@@ -388,14 +387,14 @@ class AudioLDM(nn.Module):
         uncond_embeds, cond_embeds = prompt_embeds.chunk(2)
 
         # t_enc step으로 ddim noising
-        noisy_latents = self.ddim_noising(
+        noisy_latents = self.noising(
             latents=init_latent_x,
             num_inference_steps=ddim_steps,
             transfer_strength=transfer_strength,
         )
         
         # ========== DDIM Denoising (editing) ==========
-        edited_latents = self.ddim_denoising(
+        edited_latents = self.denoising(
             latents=noisy_latents,
             prompt_embeds=torch.cat([uncond_embeds, cond_embeds]),
             num_inference_steps=ddim_steps,
@@ -434,15 +433,15 @@ class AudioLDM(nn.Module):
     def ddim_inv_editing(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
-        text: Union[str, List[str]],
         original_text: Union[str, List[str]],
+        text: Union[str, List[str]],
         duration: float,
-        batch_size: int,                            #### <----
-        transfer_strength: float,
+        batch_size: int,
+        timestep_level: float,
         guidance_scale: float,
         ddim_steps: int,
-        return_type: str = "ts",  # "ts" or "np" or "mel"
-        clipping = False,
+        return_type: str = "ts",  # "ts"/"np"/"mel"
+        mel_clipping = False,
     ):
         assert self.evalmode, "Let mode be eval"
         if duration > self.audio_duration:
@@ -466,22 +465,22 @@ class AudioLDM(nn.Module):
             guidance_scale=guidance_scale,
             num_inference_steps=ddim_steps,
             do_cfg=True,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
         )
         # ========== DDIM Denoising (editing) ==========
         # ddim_denoising # ddim_sampling
-        edited_latents = self.ddim_denoising(
+        edited_latents = self.denoising(
             latents=noisy_latents,
             prompt_embeds=torch.cat([uncond_embeds, cond_embeds]),
             num_inference_steps=ddim_steps,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
             guidance_scale=guidance_scale,
         )
         # ========== latent -> waveform ==========
         # mel spectrogram 복원
         mel_spectrogram = self.decode_latents(edited_latents)
         # mel clipping은 선택
-        if clipping:
+        if mel_clipping:
             mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
         if return_type == "mel":
             assert mel_spectrogram.shape[-2:] == (1024,64)
@@ -503,5 +502,5 @@ if __name__ == '__main__':
     audioldm = AudioLDM(device='cpu')
     mel = torch.randn(size=(3,8,256,16))
     # wav = audioldm.encode_audios(mel)
-    wav = audioldm.ddim_noising(mel)
+    wav = audioldm.noising(mel)
     print(wav.shape);print(wav.dtype)

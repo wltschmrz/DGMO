@@ -29,12 +29,11 @@ def inference(audioldm, processor, target_path, mixed_path, config):
     iteration = config['iteration']
     text = config['text']
     steps = config['steps']
-    mixed_text = config['mixed_text'] or None
 
     iter_sisdrs = []
     iter_sdris = []
     
-    mask = Mask(device, 1, 513, 1024)
+    mask = Mask(channel=1, height=513, width=1024, device=device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(mask.parameters(), lr=learning_rate)
 
@@ -68,7 +67,7 @@ def inference(audioldm, processor, target_path, mixed_path, config):
             mel_sample_list=[]
             for i in range(batch_split):
                 # edit_audio_with_ddim_inversion_sampling
-                mel_samples = audioldm.edit_audio_with_ddim(
+                mel_samples = audioldm.noise_editing(
                             mel=ref_mels,
                             # original_text=mixed_text,
                             text=text,
@@ -77,8 +76,8 @@ def inference(audioldm, processor, target_path, mixed_path, config):
                             transfer_strength=strength,
                             guidance_scale=2.5,
                             ddim_steps=steps,
-                            clipping = False,
                             return_type="mel",
+                            clipping = False,
                         )
                 mel_sample_list.append(mel_samples)
 

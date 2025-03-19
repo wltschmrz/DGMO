@@ -6,15 +6,19 @@
 # - Ensure new variables are supported in the code
 # - Code may override values via kwargs (e.g., sampling_rate=44100)
 
-learning_rate: 0.001
-ddim_batchsize: 4
-epochs: 100
-iter: 2
-inversion_strength: 0.7
-ddim_steps: 25
-ldm_config_path: "/configs/audioldm.yaml"
-text: "A cat meowing"
+# AudioLDM data preprocessing config
+ldm_config_path: "./configs/audioldm.yaml"
 
+learning_rate: 0.001
+
+ddim_batchsize: 4
+batch_split: 1
+
+iteration: 2
+epochs: 100
+noise_level: 0.7
+ddim_steps: 25
+guidance_scale: 2.5
 
 
 
