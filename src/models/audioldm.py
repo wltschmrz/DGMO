@@ -88,7 +88,6 @@ schedular_config = """
 - `_diffusers_version`: "0.15.0.dev0"  # 사용된 diffusers 버전
 """
 
-
 class AudioLDM(nn.Module):
     def __init__(self, device='cuda', ckpt="cvssp/audioldm", config=None):
         super().__init__()
@@ -499,9 +498,6 @@ class AudioLDM(nn.Module):
         else:
             assert return_type == "ts"
         return edited_waveform
-
-
-
 
 if __name__ == '__main__':
     audioldm = AudioLDM(device='cpu')

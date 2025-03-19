@@ -8,7 +8,7 @@ from librosa.filters import mel as librosa_mel_fn
 from src.utils.file_utils import load_config
 
 class AudioDataProcessor():
-    def __init__(self, config_path=None, *, device=None, **kwargs):
+    def __init__(self, *, config_path=None, device=None, **kwargs):
         self.device = device
 
         # wav normalizing params
@@ -28,9 +28,12 @@ class AudioDataProcessor():
         self.n_freq = self.filter_length // 2 + 1  # F: 513
         self.sample_length = self.sampling_rate * self.duration  # N: 163840
         self.pad_size = int((self.filter_length - self.hop_length) / 2)  # (1024-160)/2 = 432
-        self.n_times = int(((self.sample_length + 2 * self.pad_size) - self.win_length) // self.hop_length +1)  # 1024
+        self.n_times = int(((self.sample_length + 2 * self.pad_size) 
+                            - self.win_length) // self.hop_length +1)  # 1024
 
-        if self.mel_fmax not in self.mel_basis:
+        if (device not in self.mel_basis or
+            device not in self.hann_window):
+            
             mel_filterbank = librosa_mel_fn(  # np[M:64, F:513]
                 sr=self.sampling_rate,
                 n_fft=self.filter_length,

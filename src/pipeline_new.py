@@ -8,13 +8,12 @@ src_dir = os.path.join(proj_dir, 'src_audioldm')
 sys.path.extend([proj_dir, src_dir])
 import torch
 import torch.nn as nn
-from src.models.audioldm import AudioLDM
-from src.models.mask import Mask
+from src.models import AudioLDM, AudioLDM2, Auffusion, Mask
 from src.data_processing import AudioDataProcessor
 from src.utils import load_config
 
 class DGMO(nn.module):
-    def __init__(self, config_path=None, *, device=None, **kwargs):
+    def __init__(self, config_path="/configs/DGMO.yaml", *, device=None, **kwargs):
         super(DGMO, self).__init__()
         self.device = torch.device(device)
 
@@ -27,21 +26,26 @@ class DGMO(nn.module):
             if key == "repo_id":
                 setattr(self, key, value)
 
-        
-        self.ldm = AudioLDM()
-        self.mask = Mask()
-        self.processor = AudioDataProcessor(device=self.device, config_path=ldm_config)
+        repo_type = self.get_model_type(self.repo_id)
+        match repo_type:
+            case "audioldm":
+                self.ldm = AudioLDM(repo_id=self.repo_id, device=self.device)
+                self.channel = 1
+            case "audioldm2":
+                self.ldm = AudioLDM2(repo_id=self.repo_id, device=self.device)
+                self.channel = 1
+            case "auffusion":
+                self.ldm = Auffusion(repo_id=self.repo_id, device=self.device)
+                self.channel = 3
+            case _:
+                raise ValueError(f"Invalid repo_id: {self.repo_id}")
+            
+        self.processor = AudioDataProcessor(config_path=ldm_config, device=self.device)
+        self.mask = self.init_mask(self.processor, channel=self.channel)
         self.criterion = nn.MSELoss()
         self.optimizer = optim.Adam(self.mask.parameters(), lr=learning_rate)
         self.device = self.ldm.device
-        self.learning_rate = config['learning_rate']
-        self.num_epochs = config['num_epochs']
-        self.batchsize = config['batchsize']
-        self.strength = config['strength']
-        self.iteration = config['iteration']
-        self.text = config['text']
-        self.steps = config['steps']
-        self.mixed_text = config['mixed_text'] or None
+
         self.iter_sisdrs = []
         self.iter_sdris = []
 
@@ -51,3 +55,17 @@ class DGMO(nn.module):
                 self._apply_config(value)
             else:
                 setattr(self, key, value)
+    
+    def get_model_type(self, repo_id):
+        "Assume that repo_id be 'file/model_name-repo_name'"
+        base_name = repo_id.rsplit("/", 1)[-1]
+        model_name = base_name.split("-")[0]
+        return model_name
+
+    def init_mask(self, processor, channel=1):
+        return Mask(
+            channel=channel,
+            height=processor.n_freq,
+            width=self.target_length,
+            device=self.device
+            )

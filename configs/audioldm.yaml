@@ -6,8 +6,8 @@
 # - Ensure new variables are supported in the code
 # - Code may override values via kwargs (e.g., sampling_rate=44100)
 
-precision: "high"
 repo_id: "cvssp/audioldm"
+precision: "high"
 preprocessing:
   audio:
     sampling_rate: 16000
@@ -22,6 +22,18 @@ preprocessing:
     mel_bins: 64
     mel_fmin: 0
     mel_fmax: 8000
+
+# n_freq: 513             = filt_l // 2 + 1
+# sample_length: 163840   = sr * duration
+# pad_size: 432           = int((filt_l - hop_l) / 2)
+# n_times: 1024           = int(sl + 2*pad - win_l // hop_l + 1)
+
+
+
+
+
+
+
 
 # preprocessing:
 #   repo_id: "auffusion/auffusion"
