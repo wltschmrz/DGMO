@@ -17,7 +17,7 @@ batch_split: 1
 iteration: 3
 epochs: 100
 noise_level: 1.0
-ddim_steps: 50
+ddim_steps: 100
 guidance_scale: 2.5
 
 

@@ -139,7 +139,12 @@ class DGMO(nn.Module):
 
                 loss_values.append(loss.item())  # 손실값 저장
             
-            masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
+            
+            threshold = 0.9
+            final_mask = mask().detach().clone()
+            final_mask[final_mask >= threshold] = 1.0
+
+            masked_stft = (mix_stft_mag - mix_stft_mag.min()) * final_mask + mix_stft_mag.min()  #ts[1,513,1024]
             msked_wav = self.processor.inverse_stft(masked_stft, mix_stft_complex)
 
         save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
@@ -147,7 +152,7 @@ class DGMO(nn.Module):
 if __name__ == "__main__":
     dgmo = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
     dgmo.inference(
-        mix_wav_path="./Cat_n_Footstep.wav",
+        mix_wav_path="./data/samples/Cat_n_Footstep.wav",
         text="A cat meowing",
-        save_path="./cat_separated.wav"
+        save_path="./test/result/cat_separated.wav"
     )
