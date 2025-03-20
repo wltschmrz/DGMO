@@ -8,9 +8,10 @@ import librosa
 import csv
 import os
 
+from utils import calculate_sisdr, calculate_sdr
+from data_processing.audio_processing import read_wav_file
 
-
-def plot_wav_mel(wav_paths, save_path="./test/mel_compares/waveform_mel.png"):
+def plot_wav(wav_paths, save_path="./test/mel_compares/waveform_mel.png"):
     fig, axes = plt.subplots(2, len(wav_paths), figsize=(4 * len(wav_paths), 6))
 
     clip_duration = 10.24  # 클리핑 길이 (초)
@@ -45,7 +46,62 @@ def plot_wav_mel(wav_paths, save_path="./test/mel_compares/waveform_mel.png"):
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
 
+def plot_wav_mel(wav_arrays, sr=16000, save_path="./test/mel_compares/waveform_mel.png"):
+    fig, axes = plt.subplots(2, len(wav_arrays), figsize=(4 * len(wav_arrays), 6))
 
+    clip_duration = 10.24  # 클리핑 길이 (초)
+    hop_length = 512       # Hop length 설정
+
+    for i, wav in enumerate(wav_arrays):
+        # NumPy 배열 확인 후 1D 변환
+        if len(wav.shape) > 1:
+            wav = wav.squeeze()
+
+        # 샘플링 레이트 및 오디오 데이터 설정
+        duration = len(wav) / sr  # 오디오 길이(초)
+
+        # Clip to first 10.24 seconds if longer
+        if duration > clip_duration:
+            wav = wav[: int(clip_duration * sr)]  # 앞 10.24초만 유지
+
+        time = np.linspace(0, len(wav) / sr, num=len(wav))
+
+        # **Waveform 플로팅**
+        axes[0, i].plot(time, wav, lw=0.5)
+        axes[0, i].set_title(f"Waveform {i+1}")
+        axes[0, i].set_xlabel("Time (s)")
+        axes[0, i].set_ylabel("Amplitude")
+
+        # **Mel Spectrogram 계산 및 플로팅**
+        mel_spec = librosa.feature.melspectrogram(y=wav, sr=sr, n_mels=128, hop_length=hop_length)
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+
+        # ✅ specshow()에 전달할 때 (n_mels, frames) 차원 확인
+        ld.specshow(mel_spec_db, sr=sr, hop_length=hop_length, x_axis="time", y_axis="mel", ax=axes[1, i])
+
+        axes[1, i].set_title(f"Mel Spectrogram {i+1}")
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+wavs = [
+    "./data/samples/A_cat_meowing.wav",
+    "./test/result/cat.wav"
+]
+
+wav_src = read_wav_file(wavs[0], 10.24, 16000)
+wav_sep = read_wav_file(wavs[1], 10.24, 16000)
+sisdr = calculate_sisdr(ref=wav_src, est=wav_sep)
+sdr = calculate_sdr(ref=wav_src, est=wav_sep)
+print(sisdr, sdr)
+
+wavnps = [wav_src, wav_sep]
+plot_wav_mel(wavnps, save_path=f"./test/mel_compares/cat.png")
+
+
+
+'''
 audio_dir = 'data/vggsound'
 
 with open(f'src/benchmarks/metadata/vggsound_eval.csv') as csv_file:
@@ -68,7 +124,7 @@ for eval_data in tqdm(eval_list[:50]):
     text = [labels][0]
     masked_path = f'./test/result/sep_{text}_{idx}_1.wav'
     # masked_path = f'./test/result/{text}_{idx}_1.wav'
-
+    
     wavs = [
         mixture_path,
         source_path,
@@ -76,6 +132,7 @@ for eval_data in tqdm(eval_list[:50]):
         ]
     
     plot_wav_mel(wavs, save_path=f"./test/mel_compares/wav_mel_{idx}.png")
+'''
 
 
 

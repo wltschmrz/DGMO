@@ -66,18 +66,29 @@ def inference(audioldm, processor, target_path, mixed_path, config):
         if iter == 0:
             mel_sample_list=[]
             for i in range(batch_split):
-                # edit_audio_with_ddim_inversion_sampling
-                mel_samples = audioldm.noise_editing(
+                # mel_samples = audioldm.noise_editing(
+                #             mel=ref_mels,
+                #             # original_text=mixed_text,
+                #             text=text,
+                #             duration=10.24,
+                #             batch_size=batchsize_,
+                #             transfer_strength=strength,
+                #             guidance_scale=2.5,
+                #             ddim_steps=steps,
+                #             return_type="mel",
+                #             clipping = False,
+                #         )
+                mel_samples = audioldm.ddim_inv_editing(
                             mel=ref_mels,
-                            # original_text=mixed_text,
+                            original_text="",
                             text=text,
                             duration=10.24,
                             batch_size=batchsize_,
-                            transfer_strength=strength,
+                            timestep_level=strength,
                             guidance_scale=2.5,
                             ddim_steps=steps,
                             return_type="mel",
-                            clipping = False,
+                            mel_clipping = False,
                         )
                 mel_sample_list.append(mel_samples)
 

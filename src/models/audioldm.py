@@ -448,6 +448,7 @@ class AudioLDM(nn.Module):
             print(f"Warning: 지정한 duration {duration}s가 원본 오디오 길이 {self.audio_duration}s보다 큼")
         # ========== mel -> latents ==========
         assert mel.dim() == 4, mel.dim()
+        assert mel.shape[-2:] == (1024,64), mel.shape
         init_latent_x = self.encode_audios(mel)
         if torch.max(torch.abs(init_latent_x)) > 1e2:
             init_latent_x = torch.clamp(init_latent_x, min=-10.0, max=10.0)  # clipping
@@ -483,7 +484,7 @@ class AudioLDM(nn.Module):
         if mel_clipping:
             mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
         if return_type == "mel":
-            assert mel_spectrogram.shape[-2:] == (1024,64)
+            assert mel_spectrogram.shape[-2:] == (1024,64), mel_spectrogram.shape
             return mel_spectrogram
         # waveform 변환
         edited_waveform = self.mel_to_waveform(mel_spectrogram)

@@ -44,6 +44,8 @@ class DGMO(nn.Module):
         self.processor = AudioDataProcessor(config_path=self.ldm_config_path, device=self.device)
 
         self.ldm.eval()
+        for param in self.ldm.parameters():
+            param.requires_grad = False  # 모든 가중치가 학습되지 않음
 
     def _apply_config(self, config):
         for key, value in config.items():
@@ -69,8 +71,8 @@ class DGMO(nn.Module):
     def inference(self, mix_wav_path=None, text=None, save_path="./test/sample.wav"):
         mask = self.init_mask(
             channel=self.channel,
-            height=self.processor.target_length,
-            width=self.processor.n_freq
+            height=self.processor.n_freq,
+            width=self.processor.target_length
             )
         optimizer = optim.Adam(mask.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
@@ -87,19 +89,21 @@ class DGMO(nn.Module):
                 mix_wav_norm = self.processor.prepare_wav(mix_wav)
                 mix_stft_mag, mix_stft_complex = self.processor.wav_to_stft(mix_wav_norm)
                 mix_mel = self.processor.stft_to_mel(mix_stft_mag)
-                mix_mels = mix_mel.repeat(batch, 1, 1, 1)
+                vae_input = self.processor.preprocess_spec(mix_mel)
+                vae_inputs = vae_input.repeat(batch, 1, 1, 1)
             
             elif iter != 0:
                 assert msked_wav is not None, "msked_wav must be provided for iter > 0"
                 msked_wav_norm = self.processor.prepare_wav(msked_wav)
                 msked_stft_mag, msked_stft_complex = self.processor.wav_to_stft(msked_wav_norm)
                 msked_mel = self.processor.stft_to_mel(msked_stft_mag)
-                mix_mels = msked_mel.repeat(batch, 1, 1, 1)
+                vae_input = self.processor.preprocess_spec(msked_mel)
+                vae_inputs = vae_input.repeat(batch, 1, 1, 1)
 
             mel_sample_list=[]
             for i in range(self.batch_split):
                 ref_mels = self.ldm.ddim_inv_editing(
-                    mel=mix_mels,
+                    mel=vae_inputs,
                     original_text="",
                     text=text,
                     duration=self.processor.duration,
@@ -138,12 +142,12 @@ class DGMO(nn.Module):
             masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
             msked_wav = self.processor.inverse_stft(masked_stft, mix_stft_complex)
 
-        save_wav_file(filename=save_path, wav=msked_wav, sr=self.processor.sampling_rate)
+        save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
 
 if __name__ == "__main__":
-    dgmo = DGMO(config_path="./configs/DGMO.yaml")
+    dgmo = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
     dgmo.inference(
-        mix_wav_path="./data/samples/a_cat_n_stepping_wood.wav",
+        mix_wav_path="./Cat_n_Footstep.wav",
         text="A cat meowing",
-        save_path="./test/result/cat.wav"
+        save_path="./cat_separated.wav"
     )

@@ -104,17 +104,17 @@ if __name__ == "__main__":
 
     eval = AudioCapsEvaluator(query='caption', sampling_rate=16000)
     
-    audioldm = AudioLDM(device='cuda:0')
+    audioldm = AudioLDM(device='cuda:1')
     device = audioldm.device
     processor = AudioDataProcessor(device=device)
 
     # for i in range(4, 5):
     config = {
-        'num_epochs': 400,  # 50?
-        'batchsize': 32,
+        'num_epochs': 100,  # 50?
+        'batchsize': 4,
         'strength': 0.7,  # 0.6,
         'learning_rate': 0.01,
-        'iteration': 5,
+        'iteration': 2,
         'samples': 100,  # number of samples to evaluate
         'steps': 25,  # 50
     }

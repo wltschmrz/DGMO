@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import numpy as np
 import torch
 import torchaudio
@@ -36,8 +39,13 @@ def read_wav_file(filename, duration, target_sr):  # fname → np[1,N]
     wav = torchaudio.functional.resample(wav, ori_sr, target_sr)  # ts[1,N]
     return wav.numpy()  # np[1,N]
 
-def save_wav_file(filename, wav, sr):
-    torchaudio.save(filename, wav, sr)
+def save_wav_file(filename, wav_np, target_sr):
+    wav = torch.tensor(wav_np, dtype=torch.float32)
+    if len(wav.shape) == 1:  # [N] → [1, N] (mono 채널)
+        wav = wav.unsqueeze(0)
+    wav = (wav * 32767).clamp(-32768, 32767).short()
+    torchaudio.save(filename, wav, target_sr, encoding="PCM_S", bits_per_sample=16)
+    print(f"Saved WAV file: {filename} (Sample Rate: {target_sr} Hz)")
 
 class AudioDataProcessor():
     def __init__(self, *, config_path=None, device=None, **kwargs):
@@ -284,3 +292,18 @@ if __name__ == "__main__":
     sisdr__ = calculate_sisdr(ori_wav, __wav)
 
     print(">> Norm + stft & istft + Denorm: \n", sdr__, sisdr__)
+
+    # --- #
+
+    import numpy as np
+
+    filename = 'data/samples/A_cat_meowing.wav'
+    output_filename = "test/test.wav"
+    target_sr = 16000  # 16kHz 샘플링 레이트
+
+    wav_np_original = read_wav_file(filename, duration=10.24, target_sr=target_sr)
+    write_wav_file(output_filename, wav_np_original, target_sr)
+    wav_np_reloaded = read_wav_file(output_filename, duration=10.24, target_sr=target_sr)
+
+    are_equal = np.allclose(wav_np_original, wav_np_reloaded, atol=1e-4)
+    print("데이터 동일 여부:", are_equal)
