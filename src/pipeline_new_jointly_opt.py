@@ -68,7 +68,13 @@ class DGMO(nn.Module):
             device=self.device
             )
     
-    def inference(self, mix_wav_path=None, text=None, save_path="./test/sample.wav"):
+    def inference(
+            self,
+            mix_wav_path=None,
+            text1=None,
+            text2=None,
+            save_path="./test/sample.wav"
+            ):
         mask = self.init_mask(
             channel=self.channel,
             height=self.processor.n_freq,
@@ -105,7 +111,7 @@ class DGMO(nn.Module):
                 ref_mels = self.ldm.ddim_inv_editing(
                     mel=vae_inputs,
                     original_text="",
-                    text=text,
+                    text=text1,
                     duration=self.processor.duration,
                     batch_size=batch,
                     timestep_level=self.noise_level,
@@ -148,13 +154,11 @@ class DGMO(nn.Module):
             msked_wav = self.processor.inverse_stft(masked_stft, mix_stft_complex)
 
         save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
-        print(f'Saved the separated audio to {save_path}')
-        return msked_wav  # np[1,N]
 
 if __name__ == "__main__":
     dgmo = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
     dgmo.inference(
         mix_wav_path="./data/samples/Cat_n_Footstep.wav",
-        text="A cat meowing",
+        text1="A cat meowing",
         save_path="./test/result/cat_separated.wav"
     )

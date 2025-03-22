@@ -20,7 +20,7 @@ def pad_wav(waveform, target_length):  # [1,N-] → [1,N]
     assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
     if sample_length == target_length:  # if same length
         return waveform
-    elif sample_length > target_length:  # padding
+    elif sample_length < target_length:  # padding
         padded_wav = torch.zeros((1, target_length))
         padded_wav[:, :sample_length] = waveform
         return padded_wav
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     target_sr = 16000  # 16kHz 샘플링 레이트
 
     wav_np_original = read_wav_file(filename, duration=10.24, target_sr=target_sr)
-    write_wav_file(output_filename, wav_np_original, target_sr)
+    save_wav_file(output_filename, wav_np_original, target_sr)
     wav_np_reloaded = read_wav_file(output_filename, duration=10.24, target_sr=target_sr)
 
     are_equal = np.allclose(wav_np_original, wav_np_reloaded, atol=1e-4)

@@ -29,34 +29,30 @@ from src.data_processing import AudioDataProcessor
 from src.pipeline_auffusion import inference
 import torchaudio
 from utils import load_audio_torch, calculate_sisdr, calculate_sdr, get_mean_sdr_from_dict, parse_yaml
+from data_processing.audio_processing import read_wav_file
+from pipeline_new import DGMO
 
-class AudioCapsEvaluator:
-    def __init__(self, query='caption', sampling_rate=32000) -> None:
+class VGGSoundEvaluator:
+    def __init__(
+            self,
+            metadata_pth='./src/benchmarks/metadata/vggsound_eval.csv',
+            audio_dir='./data/vggsound',
+            ) -> None:
 
-        self.query = query
-        self.sampling_rate = sampling_rate
-        with open(f'src/benchmarks/metadata/vggsound_eval.csv') as csv_file:
+        with open(metadata_pth) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             eval_list = [row for row in csv_reader][1:]
         self.eval_list = eval_list
-        self.audio_dir = 'data/vggsound'
+        self.audio_dir = audio_dir
 
-    def __call__(self, pl_model, config) -> Dict:
-        print(f'Evaluation on AudioCaps with [{self.query}] queries.')
-        
-        processor, audioldm = pl_model
-        device = audioldm.device
+    def __call__(self, model, sample_num, **kwargs) -> Dict:
+        print(f'Evaluation on VGGSound.')
 
-        for param in audioldm.parameters():
-            param.requires_grad = False
-
-        sisdrs_list = []
         sdris_list = []
-        samples = config['samples']
+        sisdrs_list = []
         
-        for eval_data in tqdm(self.eval_list[:samples]):
+        for eval_data in tqdm(self.eval_list[sample_num:sample_num*2]):
 
-            # vggsound
             file_id, mix_wav, s0_wav, s0_text, s1_wav, s1_text = eval_data
             labels = s0_text
 
@@ -65,70 +61,37 @@ class AudioCapsEvaluator:
 
             text = [labels]
 
-            config['text'] = text[0]
-            caption = config['text']
+            print(mixture_path)
+            sep_wav = model.inference(
+                mix_wav_path=mixture_path,
+                text=text[0],
+                save_path=f"./test/vgg_result/{file_id[-6:]}.wav",
+                )
 
-            sisdr_li, sdri_li = inference(
-                audioldm, 
-                processor,
-                target_path=source_path,
-                mixed_path=mixture_path,
-                config=config,
-                file_id=file_id[-6:])
+            gt_wav = read_wav_file(filename=source_path, duration=10.24, target_sr=16000)
 
-            sisdr_li.append(caption)
-            sdri_li.append(caption)
+            sdr = calculate_sdr(gt_wav, sep_wav)
+            sisdr = calculate_sisdr(gt_wav, sep_wav)
 
-            sisdrs_list.append(sisdr_li)
-            sdris_list.append(sdri_li)
+            sdris_list.append(sdr)
+            sisdrs_list.append(sisdr)
             
-        sisdrs_array = np.array(sisdrs_list)  # (samples, iterations)
-        sdris_array = np.array(sdris_list)    # (samples, iterations)
-
-        return sisdrs_array, sdris_array
+        return sdris_list, sisdrs_list
 
 if __name__ == "__main__":
     from utils import ensure_folder_exists, clean_wav_filenames
-    folders = ["./test/batch_samples", "./test/plot", "./test/result"]
+    folders = ["./test/vgg_result"]
     for folder in folders:
         ensure_folder_exists(folder)
         clean_wav_filenames(folder)
 
-    eval = AudioCapsEvaluator(query='caption', sampling_rate=16000)
+    eval = VGGSoundEvaluator()
 
-    audioldm = AudioLDM('cuda')
-    device = audioldm.device
-    processor = AudioDataProcessor(device=device)
-
-    # for i in range(4, 5):
-    config = {
-        'num_epochs': 300,  # 50?
-        'batchsize': 4,
-        'strength': 0.7,  # 0.6,
-        'learning_rate': 0.01,
-        'iteration': 2,
-        'samples': 50,  # number of samples to evaluate
-        'steps': 25,  # 50
-    }
+    model = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
 
     # mean_sisdr, mean_sdri = eval((processor, audioldm), config)
-    sisdr_array, sdri_array = eval((processor, audioldm), config)
+    sdris_list, sisdrs_list = eval(model, sample_num=50)
 
-    def format_number(num):
-        num = float(num)  # 문자열이 아니라 숫자로 변환
-        formatted = f"{num:.4f}"
-        return formatted if num < 0 else f" {formatted}"
-
-    vec_format = np.vectorize(format_number)
-    formatted_sisdrs = vec_format(sisdr_array[:, :2].astype(float))
-    formatted_sdris = vec_format(sdri_array[:, :2].astype(float))
-
-    combined_data = np.core.defchararray.add(formatted_sisdrs, ' / ')
-    combined_data = np.core.defchararray.add(combined_data, formatted_sdris)
-
-    df = pd.DataFrame(combined_data)
-    df['caption'] = sisdr_array[:, 2].astype(str)  # caption 데이터는 sisdrs_array의 마지막 열 사용
-
-    df.columns = [f'iter {i+1}' for i in range(2)] + ['caption']
-    df.to_csv('sisdr_sdri_results_null.csv', index=False)
+    df = pd.DataFrame(zip(sdris_list, sisdrs_list))
+    df.to_csv("./output.csv", index=False, header=False, encoding="utf-8")
     print("CSV 저장 완료: sisdr_sdri_results.csv")

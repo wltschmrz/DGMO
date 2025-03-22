@@ -14,8 +14,8 @@ learning_rate: 0.01
 ddim_batchsize: 4
 batch_split: 1
 
-iteration: 3
-epochs: 100
+iteration: 2
+epochs: 200
 noise_level: 1.0
 ddim_steps: 100
 guidance_scale: 2.5
