@@ -4,14 +4,13 @@
 import os
 import sys
 proj_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-src_dir = os.path.join(proj_dir, 'src_audioldm')
+src_dir = os.path.join(proj_dir, 'src')
 sys.path.extend([proj_dir, src_dir])
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from src.models import AudioLDM, AudioLDM2, Auffusion, Mask
-from src.data_processing.audio_processing import save_wav_file, AudioDataProcessor
-from src.utils import load_config
+from src.utils import load_config, save_wav_file, AudioDataProcessor
 
 class DGMO(nn.Module):
     def __init__(self, *, config_path="./configs/DGMO.yaml", device="cuda", **kwargs):
@@ -71,8 +70,8 @@ class DGMO(nn.Module):
     def inference(self, mix_wav_path=None, text=None, save_path="./test/sample.wav"):
         mask = self.init_mask(
             channel=self.channel,
-            height=self.processor.n_freq,
-            width=self.processor.target_length
+            height=self.processor.n_freq_bins,
+            width=self.processor.n_time_frames
             )
         optimizer = optim.Adam(mask.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
@@ -126,8 +125,7 @@ class DGMO(nn.Module):
             for epoch in range(self.epochs):
                 optimizer.zero_grad()
                 masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
-                assert masked_stft.size() == (1, self.processor.n_freq,
-                                              self.processor.target_length), masked_stft.size()
+                assert masked_stft.size() == (1, self.processor.n_freq_bins, self.processor.n_time_frames), masked_stft.size()
                 masked_mel = self.processor.stft_to_mel(masked_stft)  # [1,M,T]
                 masked_mel = self.processor.preprocess_spec(masked_mel)  # [1,1,T*,M*]
                 masked_mel_expended = masked_mel.repeat(self.ddim_batchsize, 1, 1, 1)
@@ -140,7 +138,7 @@ class DGMO(nn.Module):
                 loss_values.append(loss.item())
             
             
-            threshold = 0.9
+            threshold = 0.8
             final_mask = mask().detach().clone()
             final_mask[final_mask >= threshold] = 1.0
 

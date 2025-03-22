@@ -3,36 +3,37 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchaudio
 from librosa.filters import mel as librosa_mel_fn
-from src.utils.file_utils import load_config
+from src.utils import load_config
 
-def segment_wav(waveform, target_length, start=0):  # [1,N+] → [1,N]
+def segment_wav(waveform, target_len, start=0):  # [1,N+] → [1,N]
     sample_length = waveform.shape[-1]
     assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
-    if sample_length <= target_length:  # too short
+    if sample_length <= target_len:  # too short
         return waveform
-    elif sample_length > target_length:  # segmentation
-        return waveform[:, start : start + target_length]
+    elif sample_length > target_len:  # segmentation
+        return waveform[:, start : start + target_len]
 
-def pad_wav(waveform, target_length):  # [1,N-] → [1,N]
+def pad_wav(waveform, target_len):  # [1,N-] → [1,N]
     sample_length = waveform.shape[-1]
     assert sample_length > 100, f"Waveform is too short, # of samples: {sample_length}"
-    if sample_length == target_length:  # if same length
+    if sample_length == target_len:  # if same length
         return waveform
-    elif sample_length < target_length:  # padding
-        padded_wav = torch.zeros((1, target_length))
+    elif sample_length < target_len:  # padding
+        padded_wav = torch.zeros((1, target_len))
         padded_wav[:, :sample_length] = waveform
         return padded_wav
 
 # fname → wav
-def read_wav_file(filename, duration, target_sr):  # fname → np[1,N]
+def read_wav_file(filename, target_duration, target_sr):  # fname → np[1,N]
     # 1. file load
     wav, ori_sr = torchaudio.load(filename, normalize=True)  # ts[C,N'±]
     # 2. to mono channel
     wav = wav.mean(dim=0) if wav.shape[0] > 1 else wav  # ts[1,N'±]
     # 2. segment & padding (to target length)
-    target_t = int(ori_sr * duration)
+    target_t = int(ori_sr * target_duration)
     wav = segment_wav(wav, target_t)  # ts[1,N'-]
     wav = pad_wav(wav, target_t)      # ts[1,N']
     # 3. resampling
@@ -57,52 +58,32 @@ class AudioDataProcessor():
         # spec reconstruction params
         self.spec_length = None
 
-        # STFT params
-        self.mel_basis = {}
-        self.hann_window = {}
-
         config = load_config(config_path) if config_path else {}
         config.update(kwargs)
         self._apply_config(config)
 
-        self.n_freq = self.filter_length // 2 + 1  # F: 513
-        self.sample_length = self.sampling_rate * self.duration  # N: 163840
-        self.pad_size = int((self.filter_length - self.hop_length) / 2)  # (1024-160)/2 = 432
-        self.n_times = int(((self.sample_length + 2 * self.pad_size) 
-                            - self.win_length) // self.hop_length +1)  # 1024
+        # STFT params
+        mel_filterbank = librosa_mel_fn(  # np[M:64, F:513]
+            sr=self.sampling_rate,
+            n_fft=self.n_fft,
+            n_mels=self.mel_bins,
+            fmin=self.mel_fmin,
+            fmax=self.mel_fmax,
+            )
+        
+        self.mel_basis = torch.from_numpy(mel_filterbank).float().to(device)  # ts[M,F:513]
+        self.hann_window = torch.hann_window(self.win_length).to(device)  # ts[win_length] = [1024]
 
-        if (device not in self.mel_basis or
-            device not in self.hann_window):
-            
-            mel_filterbank = librosa_mel_fn(  # np[M:64, F:513]
-                sr=self.sampling_rate,
-                n_fft=self.filter_length,
-                n_mels=self.mel_bins,
-                fmin=self.mel_fmin,
-                fmax=self.mel_fmax,
-                )
-            
-            self.mel_basis[f"{device}"] = torch.from_numpy(mel_filterbank).float().to(device)  # ts[M,F:513]
-            self.hann_window[f"{device}"] = torch.hann_window(self.win_length).to(device)  # ts[win_length] = [1024]
-
-        if self.repo_id == "cvssp/audioldm":
-            assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
-            assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
-            assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
-            assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
-            print("[INFO] audio_processing.py: set for AudioLDM")
-        elif self.repo_id == "cvssp/audioldm2":
-            assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
-            assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
-            assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
-            assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
-            print("[INFO] audio_processing.py: set for AudioLDM2")
-        elif self.repo_id == "auffusion/auffusion":
-            assert self.n_freq == 513, f"n_freq should be 513, but {self.n_freq}"
-            assert self.sample_length == 163840, f"sample_length should be 163840, but {self.sample_length}"
-            assert self.pad_size == 432, f"pad_size should be 432, but {self.pad_size}"
-            assert self.n_times == 1024, f"n_times should be 1024, but {self.n_times}"
-            print("[INFO] audio_processing.py: set for Auffusion")
+        n_freq = self.n_fft // 2 + 1
+        sampling_length = self.sampling_rate * self.duration
+        stft_pad_size = int((self.win_length - self.hop_length) / 2)
+        n_time_frames = int(((self.sample_length + 2 * self.stft_pad_size) 
+                            - self.win_length) // self.hop_length + 1)
+        assert self.n_freq_bins == n_freq, f"n_freq should be {n_freq}, but {self.n_freq_bins}"
+        assert self.sample_length == sampling_length, f"sample_length should be {sampling_length}, but {self.sample_length}"
+        assert self.stft_pad_size == stft_pad_size, f"stft_pad_size should be {stft_pad_size}, but {self.stft_pad_size}"
+        assert self.n_time_frames == n_time_frames, f"n_times should be {n_time_frames}, but {self.n_time_frames}"
+        print(f"[INFO] audio_processing.py: Prepared Settings for {self.repo_id}")
 
     def _apply_config(self, config):
         for key, value in config.items():
@@ -165,11 +146,11 @@ class AudioDataProcessor():
         # waveform = torch.nn.functional.pad(waveform.unsqueeze(1), (self.pad_size, self.pad_size), mode="reflect").squeeze(1)
 
         stft_complex = torch.stft(  # ts[1, F:513, T:1024~30] (complex)
-            waveform,                   # F = filter_length // 2 + 1 (onesided=True) = 513
-            self.filter_length,         # T = ((samples + 2*pad_size) - win_length) // hop_length + 1 = 1024
+            waveform,                   # F = n_fft // 2 + 1 (onesided=True) = 513
+            self.n_fft,         # T = ((samples + 2*pad_size) - win_length) // hop_length + 1 = 1024
             hop_length=self.hop_length,
             win_length=self.win_length,
-            window=self.hann_window[f"{self.device}"],
+            window=self.hann_window,
             pad_mode="reflect",
             normalized=False,
             onesided=True,
@@ -177,48 +158,53 @@ class AudioDataProcessor():
         )
         stft_mag = torch.abs(stft_complex)  # ts[1, F:513, T:1024~30]
         self.spec_length = stft_mag.shape[-1]
-        stft_mag, stft_complex = stft_mag[:,:,:self.target_length], stft_complex[:,:,:self.target_length]  # ts[F,T], ts[F,T]
-        assert stft_mag.shape[:2] == (1, self.n_freq), f"{stft_mag.shape}, {self.n_freq}, {self.n_times}"
+        stft_mag, stft_complex = stft_mag[:,:,:self.n_time_frames], stft_complex[:,:,:self.n_time_frames]  # ts[F,T], ts[F,T]
+        assert stft_mag.shape[:2] == (1, self.n_freq_bins), f"{stft_mag.shape}, {self.n_freq_bins}, {self.n_time_frames}"
         return stft_mag, stft_complex  # [1, F:513, T:1024], [1, F:513, T:1024]
     
     # stft_mag → mel_spec
     def stft_to_mel(self, stft_mag):  # ts[1, F:513, T:1024] → ts[1, M:64, T:1024]
-        mel_filterbank = self.mel_basis[f"{self.device}"]  # ts[M:64, F:513]
+        mel_filterbank = self.mel_basis  # ts[M:64, F:513]
         # [M:64, F:513] x [1, F:513, T:1024] → [1, M:64, T:1024]
         stft_mag = stft_mag.to(self.device)  # ts[1, F:513, T:1024]
         mel_spec = self.spectral_normalize_torch(torch.matmul(mel_filterbank, stft_mag))  # ts[1, M:64, T:1024]
-        assert mel_spec.shape[1:] == (self.mel_bins, self.target_length), f"{mel_spec.shape}, {stft_mag.shape}"
+        assert mel_spec.shape[1:] == (self.mel_bins, self.n_time_frames), f"{mel_spec.shape}, {stft_mag.shape}"
         return mel_spec  # ts[1, M:64, T:1024]
     
     # mel_spec → vae_input
     def preprocess_spec(self, spectrogram):  # ts[1, M, T] -> ts[1, 1, T*:1024, M*:64]
-        spec = spectrogram[0]  # [M, T]
-        spec = spec.T.float()  # [T, M]
-        n_frames = spec.shape[0]
-        p = self.target_length - n_frames
-        # cut and pad
-        if p > 0:
-            m = torch.nn.ZeroPad2d((0, 0, 0, p))
-            spec = m(spec)  # [T*, M] 뒷 시간 늘림
-        elif p < 0:
-            spec = spec[0 : self.target_length, :]  # [T*, M] 뒷 시간 줄임
-        if (spec.size(-1) % 2 != 0):
-            spec = spec[..., :-1]  # M이 odd면, -1  # [T*, M*]
-        return spec[None, None, ...]  # [1, 1, T*, M*]
-    
+        if "audioldm" in self.repo_id:
+            spec = spectrogram[0]  # [M, T]
+            spec = spec.T.float()  # [T, M]
+            n_frames = spec.shape[0]
+            n_pad = self.n_time_frames - n_frames
+            # cut and pad
+            if n_pad > 0:
+                m = torch.nn.ZeroPad2d((0, 0, 0, n_pad))
+                spec = m(spec)  # [T*, M] 뒷 시간 늘림
+            elif n_pad < 0:
+                spec = spec[0 : self.n_time_frames, :]  # [T*, M] 뒷 시간 줄임
+            if (spec.size(-1) % 2 != 0):
+                spec = spec[..., :-1]  # M이 odd면, -1  # [T*, M*]
+            return spec[None, None, ...]  # [1, 1, T*, M*]
+        elif "auffusion" in self.repo_id:
+            norm_spec = self.affusion_normalize_spectrogram(spectrogram)
+            norm_spec = self.auffusion_pad_spec(norm_spec, 1024)
+            return norm_spec  # [3, M*, T*]
+
     # stft → wav' → wav
     def inverse_stft(self, stft_mag, stft_complex, fac_rm=True):  # ts[1,F,T], ts[1,F,T] → ts[1,N]
         assert stft_mag.shape == stft_complex.shape
-        assert stft_mag.shape[1:] == (self.n_freq, self.n_times), f"{stft_mag.shape}"
+        assert stft_mag.shape[1:] == (self.n_freq_bins, self.n_time_frames), f"{stft_mag.shape}"
         if stft_mag.shape[-1] < self.spec_length:
-            _stft_mag = torch.zeros((1, self.n_freq, self.spec_length), device=self.device)
-            _stft_mag[:, :, :self.n_times] = stft_mag
-            _stft_complex = torch.zeros((1, self.n_freq, self.spec_length), dtype=torch.complex64, device=self.device)
-            _stft_complex[:, :, :self.n_times] = stft_complex
+            _stft_mag = torch.zeros((1, self.n_freq_bins, self.spec_length), device=self.device)
+            _stft_mag[:, :, :self.n_time_frames] = stft_mag
+            _stft_complex = torch.zeros((1, self.n_freq_bins, self.spec_length), dtype=torch.complex64, device=self.device)
+            _stft_complex[:, :, :self.n_time_frames] = stft_complex
         else:
             _stft_mag = stft_mag[:, :, :self.spec_length]
             _stft_complex = stft_complex[:, :, :self.spec_length]
-        assert _stft_mag.shape[1:] == (self.n_freq, self.spec_length), f"{_stft_mag.shape}"
+        assert _stft_mag.shape[1:] == (self.n_freq_bins, self.spec_length), f"{_stft_mag.shape}"
         stft_mag = _stft_mag.squeeze(0)
         stft_complex = _stft_complex.squeeze(0)
 
@@ -228,10 +214,10 @@ class AudioDataProcessor():
 
         estimated_wav = torch.istft(
                 masked_stft_complex,
-                n_fft=self.filter_length,
+                n_fft=self.n_fft,
                 hop_length=self.hop_length,
                 win_length=self.win_length,
-                window=self.hann_window[f"{self.device}"],
+                window=self.hann_window,
                 normalized=False,
                 onesided=True
             )
@@ -254,13 +240,41 @@ class AudioDataProcessor():
         wav = self.denormalize_wav(wav, factor_removal=factor_rm)  # UN centering & normalizing
         return wav  # np[1,N]
 
+    def affusion_normalize_spectrogram(
+        self,
+        spectrogram: torch.Tensor,
+        max_value = 200,
+        min_value = 1e-5,
+        power = 1.,
+        inverse = False
+    ) -> torch.Tensor:
+        # Rescale to 0-1
+        max_value = np.log(max_value) # 5.298317366548036
+        min_value = np.log(min_value) # -11.512925464970229
+        assert spectrogram.max() <= max_value and spectrogram.min() >= min_value
+        data = (spectrogram - min_value) / (max_value - min_value)
+        if inverse:  # Invert
+            data = 1 - data
+        data = torch.pow(data, power)  # Apply the power curve
+        data = data.repeat(3, 1, 1)  # 1D -> 3D
+        # Flip Y axis: image origin at the top-left corner, spectrogram origin at the bottom-left corner
+        data = torch.flip(data, [1])
+        return data
 
+    def auffusion_pad_spec(self, spec, spec_length, pad_value=0, random_crop=True): # spec: [3, mel_dim, spec_len]
+        assert spec_length % 8 == 0, "spec_length must be divisible by 8"
+        if spec.shape[-1] < spec_length:
+            # pad spec to spec_length
+            spec = F.pad(spec, (0, spec_length - spec.shape[-1]), value=pad_value)
+        else:
+            spec = spec[:, :, :spec_length]
+        return spec
 
 if __name__ == "__main__":
     import sys
     import os
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-    from src.utils.eval_utils import calculate_sdr, calculate_sisdr
+    from src.utils import calculate_sdr, calculate_sisdr
     
     config_path = "configs/audioldm.yaml"
     audio_processor = AudioDataProcessor(config_path=config_path, device="cuda")
@@ -269,7 +283,7 @@ if __name__ == "__main__":
     sdr = calculate_sdr(ori_wav, ori_wav)
     sisdr = calculate_sisdr(ori_wav, ori_wav)
 
-    print(">> Original: \n", sdr, sisdr)
+    print(f">> Original: \nSDR: {sdr} | SISDR: {sisdr}")
     
     wav = audio_processor.prepare_wav(ori_wav)  # ts[1,N]
     _wav = audio_processor.reconst_wav(wav, factor_rm=False)  # np[1,N]
@@ -279,7 +293,7 @@ if __name__ == "__main__":
     sdr_ = calculate_sdr(ori_wav, _wav)
     sisdr_ = calculate_sisdr(ori_wav, _wav)
 
-    print(">> Norm & Denorm: \n", sdr_, sisdr_)
+    print(f">> Norm & Denorm: \nSDR: {sdr_} | SISDR: {sisdr_}")
 
     stft_mag, stft_complex = audio_processor.wav_to_stft(wav)  # ts[1,F,T], ts[1,F,T]
     mel_spec = audio_processor.stft_to_mel(stft_mag)  # ts[1,M,T]
@@ -291,7 +305,7 @@ if __name__ == "__main__":
     sdr__ = calculate_sdr(ori_wav, __wav)
     sisdr__ = calculate_sisdr(ori_wav, __wav)
 
-    print(">> Norm + stft & istft + Denorm: \n", sdr__, sisdr__)
+    print(f">> Norm + stft & istft + Denorm: \nSDR: {sdr__} | SISDR: {sisdr__}")
 
     # --- #
 
@@ -301,9 +315,9 @@ if __name__ == "__main__":
     output_filename = "test/test.wav"
     target_sr = 16000  # 16kHz 샘플링 레이트
 
-    wav_np_original = read_wav_file(filename, duration=10.24, target_sr=target_sr)
+    wav_np_original = read_wav_file(filename, target_duration=10.24, target_sr=target_sr)
     save_wav_file(output_filename, wav_np_original, target_sr)
-    wav_np_reloaded = read_wav_file(output_filename, duration=10.24, target_sr=target_sr)
+    wav_np_reloaded = read_wav_file(output_filename, target_duration=10.24, target_sr=target_sr)
 
     are_equal = np.allclose(wav_np_original, wav_np_reloaded, atol=1e-4)
     print("데이터 동일 여부:", are_equal)

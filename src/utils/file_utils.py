@@ -2,10 +2,6 @@ import os
 import yaml
 from typing import Dict
 
-def parse_yaml(config_yaml: str) -> Dict:
-    with open(config_yaml, "r") as fr:
-        return yaml.load(fr, Loader=yaml.FullLoader)
-
 def load_config(config_path):
     with open(config_path, "r") as f:
         return yaml.safe_load(f)

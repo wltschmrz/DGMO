@@ -14,39 +14,15 @@ preprocessing:
     duration: 10.24
     max_wav_value: 32768.0
   stft:
-    target_length: 1024
-    filter_length: 1024
-    hop_length: 160
+    n_fft: 1024             # filter_length
     win_length: 1024
+    hop_length: 160
+    stft_pad_size: 432      # (win_length - hop_length) // 2
   mel:
     mel_bins: 64
     mel_fmin: 0
     mel_fmax: 8000
-
-# n_freq: 513             = filt_l // 2 + 1
-# sample_length: 163840   = sr * duration
-# pad_size: 432           = int((filt_l - hop_l) / 2)
-# n_times: 1024           = int(sl + 2*pad - win_l // hop_l + 1)
-
-
-
-
-
-
-
-
-# preprocessing:
-#   repo_id: "auffusion/auffusion"
-#   audio:
-#     sampling_rate: 16000
-#     duration: 10.24
-#     max_wav_value: 32768.0
-#   stft:
-#     target_length: 1024
-#     filter_length: 2048
-#     hop_length: 160
-#     win_length: 1024
-#   mel:
-#     mel_bins: 256
-#     mel_fmin: 0
-#     mel_fmax: 8000
+shape:
+  n_freq_bins: 513          # n_fft // 2 + 1
+  n_time_frames: 1024       # (sample_length + 2 * stft_pad_size - win_length) // hop_length + 1
+  sample_length: 163840     # sampling_rate * duration
