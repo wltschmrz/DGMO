@@ -69,7 +69,7 @@ class DGMO(nn.Module):
     
     def inference(self, mix_wav_path=None, text=None, save_path="./test/sample.wav"):
         mask = self.init_mask(
-            channel=1, ## self.channel,
+            channel=1,
             height=self.processor.n_freq_bins,
             width=self.processor.n_time_frames
             )
@@ -141,17 +141,11 @@ class DGMO(nn.Module):
 
             for epoch in range(self.epochs):
                 optimizer.zero_grad()
-                # print(mask().shape)##
-                # print(mix_stft_mag.shape)##
                 masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
-                # print(masked_stft.shape)##
                 assert masked_stft.size() == (1, self.processor.n_freq_bins, self.processor.n_time_frames), masked_stft.size()
                 masked_mel = self.processor.stft_to_mel(masked_stft)  # [1,M,T]
-                # print(masked_mel.shape)##
                 masked_mel = self.processor.preprocess_spec(masked_mel)  # [1,1,T*,M*]
-                # print(masked_mel.shape)##
                 masked_mel_expended = masked_mel.repeat(self.ddim_batchsize, 1, 1, 1)
-                # print(masked_mel_expended.shape)##
 
                 loss = criterion(ref_mels, masked_mel_expended)
 
@@ -159,7 +153,6 @@ class DGMO(nn.Module):
                 optimizer.step()
 
                 loss_values.append(loss.item())
-            
             
             threshold = 0.8
             final_mask = mask().detach().clone()
@@ -173,9 +166,28 @@ class DGMO(nn.Module):
         return msked_wav  # np[1,N]
 
 if __name__ == "__main__":
-    dgmo = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
+    from src.utils import read_wav_file, plot_wav_mel, printing_sdrs
+    
+    mix = "./data/samples/Cat_n_Footstep.wav"
+    sep = "./test/result/cat_separated.wav"
+    gt = "./data/samples/A_cat_meowing.wav"
+
+    text = "A cat meowing"
+
+    config = "./configs/DGMO.yaml"
+
+    dgmo = DGMO(config_path=config, device="cuda:1")
     dgmo.inference(
-        mix_wav_path="./data/samples/Cat_n_Footstep.wav",
-        text="A cat meowing",
-        save_path="./test/result/cat_separated.wav"
+        mix_wav_path=mix,
+        text=text,
+        save_path=sep
     )
+
+    mix_wav = read_wav_file(filename=mix, target_duration=10.24, target_sr=16000)
+    sep_wav = read_wav_file(filename=sep, target_duration=10.24, target_sr=16000)
+    gt_wav = read_wav_file(filename=gt, target_duration=10.24, target_sr=16000)
+    
+    scores = printing_sdrs(ref=gt_wav, mix=mix_wav, est=sep_wav)
+    wav_paths = [mix_wav, sep_wav, gt_wav]
+    png_save_path = f"./test/mel_test/cat--2.png"
+    plot_wav_mel(wav_paths, save_path=png_save_path, score=scores, config_path=config)
