@@ -29,11 +29,11 @@ from .auffusion_utils.auffusion_functions import (
 os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
 
 class Auffusion(nn.Module):
-    def __init__(self, device='cuda', repo_id="auffusion/auffusion-full", config=None):
+    def __init__(self, device='cuda', ckpt="auffusion/auffusion-full", config=None):
         super().__init__()
         self.device = torch.device(device)
 
-        pretrained_model_name_or_path=repo_id
+        pretrained_model_name_or_path=ckpt
         if not os.path.isdir(pretrained_model_name_or_path):
             pretrained_model_name_or_path = snapshot_download(pretrained_model_name_or_path) 
 
@@ -68,7 +68,7 @@ class Auffusion(nn.Module):
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
 
         self.evalmode = True
-        self.checkpoint_path = repo_id
+        self.checkpoint_path = ckpt
         self.audio_duration = 10.24 if not config else config['duration']
         self.original_waveform_length = 10.24 * 16000 #= 163840 # int(self.audio_duration * self.vocoder.config.sampling_rate)  # 10.24 * 16000 = 163840
 
@@ -276,8 +276,8 @@ class Auffusion(nn.Module):
     def edit_audio_with_ddim_inversion_sampling(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
-        text: Union[str, List[str]],
         original_text: Union[str, List[str]],
+        text: Union[str, List[str]],
         duration: float,
         batch_size: int,                            #### <----
         transfer_strength: float,
@@ -285,12 +285,10 @@ class Auffusion(nn.Module):
         ddim_steps: int,
         return_type: str = "ts",  # "ts" or "np" or "mel"
         clipping = False,
-        mixed_audio_for_embeds=None,
     ):
         assert self.evalmode, "Let mode be eval"
         if duration > self.audio_duration:
             print(f"Warning: 지정한 duration {duration}s가 원본 오디오 길이 {self.audio_duration}s보다 큼")
-       
        
         # ========== mel -> latents ==========
         assert mel.dim() == 4, mel.dim()
@@ -347,7 +345,6 @@ class Auffusion(nn.Module):
         mel_spectrogram_list=[]
         for img in image:
             mel_spec = denormalize_spectrogram(img)
-            mel_spec = mel_spec.T
             mel_spec = mel_spec.unsqueeze(0).unsqueeze(0)
             mel_spectrogram_list.append(mel_spec)
         mel_spectrogram = torch.cat(mel_spectrogram_list, dim=0)
@@ -356,7 +353,7 @@ class Auffusion(nn.Module):
         if clipping:
             mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
         if return_type == "mel":
-            assert mel_spectrogram.shape[-2:] == (1024,256) # 64
+            assert mel_spectrogram.shape[-2:] == (256,1024) # 64
             return mel_spectrogram
         # waveform 변환
         edited_waveform = self.mel_to_waveform(mel_spectrogram)

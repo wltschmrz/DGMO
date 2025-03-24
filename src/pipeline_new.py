@@ -69,7 +69,7 @@ class DGMO(nn.Module):
     
     def inference(self, mix_wav_path=None, text=None, save_path="./test/sample.wav"):
         mask = self.init_mask(
-            channel=self.channel,
+            channel=1, ## self.channel,
             height=self.processor.n_freq_bins,
             width=self.processor.n_time_frames
             )
@@ -101,34 +101,57 @@ class DGMO(nn.Module):
 
             mel_sample_list=[]
             for i in range(self.batch_split):
-                ref_mels = self.ldm.ddim_inv_editing(
-                    mel=vae_inputs,
-                    original_text="",
-                    text=text,
-                    duration=self.processor.duration,
-                    batch_size=batch,
-                    timestep_level=self.noise_level,
-                    guidance_scale=self.guidance_scale,
-                    ddim_steps=self.ddim_steps,
-                    return_type="mel",  # "ts"/"np"/"mel"
-                    mel_clipping = False,
-                )
+                if "audioldm" in self.repo_id:
+                    ref_mels = self.ldm.ddim_inv_editing(
+                        mel=vae_inputs,
+                        original_text="",
+                        text=text,
+                        duration=self.processor.duration,
+                        batch_size=batch,
+                        timestep_level=self.noise_level,
+                        guidance_scale=self.guidance_scale,
+                        ddim_steps=self.ddim_steps,
+                        return_type="mel",  # "ts"/"np"/"mel"
+                        mel_clipping = False,
+                    )
+                elif "auffusion" in self.repo_id:    #### 1. 이거 통합하는거랑, 2. 마스크 채널이랑, 3. 차원 수 안 맞는거 확인
+                    print("auffusion")##
+                    print(vae_inputs.shape)##
+                    ref_mels = self.ldm.edit_audio_with_ddim_inversion_sampling(
+                        mel=vae_inputs,
+                        original_text="",
+                        text=text,
+                        duration=10.24,
+                        batch_size=batch,
+                        transfer_strength=self.noise_level,
+                        guidance_scale=self.guidance_scale,
+                        ddim_steps=self.ddim_steps,
+                        return_type="mel",  # "ts"/"np"/"mel"
+                        clipping=False,
+                    )
+                # print(ref_mels.shape)##
                 mel_sample_list.append(ref_mels)
 
             ref_mels = torch.cat(mel_sample_list, dim=0)
             assert ref_mels.size(0) == self.ddim_batchsize and ref_mels.dim() == 4, (ref_mels.shape, self.ddim_batchsize)
-
+            # print(ref_mels.shape)##
             # ------------------------------------------------------------------ #
 
             loss_values = []
 
             for epoch in range(self.epochs):
                 optimizer.zero_grad()
+                # print(mask().shape)##
+                # print(mix_stft_mag.shape)##
                 masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
+                # print(masked_stft.shape)##
                 assert masked_stft.size() == (1, self.processor.n_freq_bins, self.processor.n_time_frames), masked_stft.size()
                 masked_mel = self.processor.stft_to_mel(masked_stft)  # [1,M,T]
+                # print(masked_mel.shape)##
                 masked_mel = self.processor.preprocess_spec(masked_mel)  # [1,1,T*,M*]
+                # print(masked_mel.shape)##
                 masked_mel_expended = masked_mel.repeat(self.ddim_batchsize, 1, 1, 1)
+                # print(masked_mel_expended.shape)##
 
                 loss = criterion(ref_mels, masked_mel_expended)
 
@@ -146,7 +169,7 @@ class DGMO(nn.Module):
             msked_wav = self.processor.inverse_stft(masked_stft, mix_stft_complex)
 
         save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
-        print(f'Saved the separated audio to {save_path}')
+        # print(f'Saved the separated audio to {save_path}')
         return msked_wav  # np[1,N]
 
 if __name__ == "__main__":

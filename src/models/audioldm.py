@@ -453,13 +453,13 @@ class AudioLDM(nn.Module):
         if torch.max(torch.abs(init_latent_x)) > 1e2:
             init_latent_x = torch.clamp(init_latent_x, min=-10.0, max=10.0)  # clipping
         # ========== DDIM Inversion (noising) ==========
-        print(batch_size)
+        # print(batch_size)
         ori_prompt_embeds = self.encode_prompt(prompts=original_text,  batch_size=batch_size, do_cfg=True)
         ori_uncond_embeds, ori_cond_embeds = ori_prompt_embeds.chunk(2)
         prompt_embeds = self.encode_prompt(prompts=text,  batch_size=batch_size, do_cfg=True)
         uncond_embeds, cond_embeds = prompt_embeds.chunk(2)
         # ddim_inversion
-        print(init_latent_x.shape, ori_uncond_embeds.shape, ori_cond_embeds.shape)
+        # print(init_latent_x.shape, ori_uncond_embeds.shape, ori_cond_embeds.shape)
         noisy_latents = self.ddim_inversion(
             start_latents=init_latent_x,
             final_prompt_embeds=torch.cat([ori_uncond_embeds, ori_cond_embeds]),

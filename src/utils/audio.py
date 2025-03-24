@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 import torchaudio
 from librosa.filters import mel as librosa_mel_fn
-from src.utils import load_config
+from .file_utils import load_config
 
 def segment_wav(waveform, target_len, start=0):  # [1,N+] → [1,N]
     sample_length = waveform.shape[-1]
@@ -46,7 +46,7 @@ def save_wav_file(filename, wav_np, target_sr):
         wav = wav.unsqueeze(0)
     wav = (wav * 32767).clamp(-32768, 32767).short()
     torchaudio.save(filename, wav, target_sr, encoding="PCM_S", bits_per_sample=16)
-    print(f"Saved WAV file: {filename} (Sample Rate: {target_sr} Hz)")
+    # print(f"Saved WAV file: {filename} (Sample Rate: {target_sr} Hz)")
 
 class AudioDataProcessor():
     def __init__(self, *, config_path=None, device=None, **kwargs):
@@ -188,6 +188,7 @@ class AudioDataProcessor():
                 spec = spec[..., :-1]  # M이 odd면, -1  # [T*, M*]
             return spec[None, None, ...]  # [1, 1, T*, M*]
         elif "auffusion" in self.repo_id:
+            print('What')
             norm_spec = self.affusion_normalize_spectrogram(spectrogram)
             norm_spec = self.auffusion_pad_spec(norm_spec, 1024)
             return norm_spec  # [3, M*, T*]

@@ -15,21 +15,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchaudio
 from tqdm import tqdm
 import pathlib
 import librosa
 import yaml
 os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
 
-from src.models.audioldm import AudioLDM
-from src.models.audioldm2 import AudioLDM2
-from src.models.auffusion import Auffusion
-# from src.data_processing import AuffusionProcessor as AudioDataProcessor
-from src.data_processing import AudioDataProcessor
-from src.pipeline_auffusion import inference
-import torchaudio
-from utils import load_audio_torch, calculate_sisdr, calculate_sdr, get_mean_sdr_from_dict, parse_yaml
-from data_processing.audio_processing import read_wav_file
+from src.utils import read_wav_file, calculate_sisdr, calculate_sdr, get_mean_sdr_from_dict
 from pipeline_new import DGMO
 
 class VGGSoundEvaluator:
@@ -51,7 +44,7 @@ class VGGSoundEvaluator:
         sdris_list = []
         sisdrs_list = []
         
-        for eval_data in tqdm(self.eval_list[sample_num:sample_num*2]):
+        for eval_data in tqdm(self.eval_list):
 
             file_id, mix_wav, s0_wav, s0_text, s1_wav, s1_text = eval_data
             labels = s0_text
@@ -61,14 +54,14 @@ class VGGSoundEvaluator:
 
             text = [labels]
 
-            print(mixture_path)
+            # print(mixture_path)
             sep_wav = model.inference(
                 mix_wav_path=mixture_path,
                 text=text[0],
-                save_path=f"./test/vgg_result/{file_id[-6:]}.wav",
+                save_path=f"./test/vgg_result/{file_id}.wav",
                 )
 
-            gt_wav = read_wav_file(filename=source_path, duration=10.24, target_sr=16000)
+            gt_wav = read_wav_file(filename=source_path, target_duration=10.24, target_sr=16000)
 
             sdr = calculate_sdr(gt_wav, sep_wav)
             sisdr = calculate_sisdr(gt_wav, sep_wav)
@@ -90,7 +83,7 @@ if __name__ == "__main__":
     model = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
 
     # mean_sisdr, mean_sdri = eval((processor, audioldm), config)
-    sdris_list, sisdrs_list = eval(model, sample_num=50)
+    sdris_list, sisdrs_list = eval(model, sample_num=-1)
 
     df = pd.DataFrame(zip(sdris_list, sisdrs_list))
     df.to_csv("./output.csv", index=False, header=False, encoding="utf-8")
