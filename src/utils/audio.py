@@ -92,14 +92,18 @@ class AudioDataProcessor():
             else:
                 setattr(self, key, value)
 
-    def normalize_wav(self, waveform):  # [1,N] → [1,N]
+    def normalize_wav(self, waveform, reconstruction=True):  # [1,N] → [1,N]
         MAX_AMPLITUDE = 0.5
         EPSILON = 1e-8
-        assert self.norm_shifting == self.wav_max == None, "Normalization params should not be set"
-        self.norm_shifting = np.mean(waveform)
-        centered = waveform - self.norm_shifting
-        self.wav_max = np.max(np.abs(centered))
-        normalized = centered * MAX_AMPLITUDE / (self.wav_max + EPSILON)
+        shift = np.mean(waveform)
+        centered = waveform - shift
+        max = np.max(np.abs(centered))
+        normalized = centered * MAX_AMPLITUDE / (max + EPSILON)
+        if reconstruction:
+            assert self.norm_shifting == self.wav_max == None,\
+                f"Normalization params should not be set: {self.norm_shifting}, {self.wav_max}"
+            self.norm_shifting = shift
+            self.wav_max = max
         return normalized    # in [-0.5,0.5]
 
     def denormalize_wav(self, normed_wav, factor_removal=True):  # [1,N] → [1,N]
@@ -130,9 +134,9 @@ class AudioDataProcessor():
         return wav.numpy()  # np[1,N]
     
     # wav → wav' (LDM input용)
-    def prepare_wav(self, wav):  # np[1,N] → np[1,N]
+    def prepare_wav(self, wav, reconstruction=True):  # np[1,N] → np[1,N]
         # 4. normalize
-        wav = self.normalize_wav(wav)  # centering & Norm [-0.5,0.5]
+        wav = self.normalize_wav(wav, reconstruction)  # centering & Norm [-0.5,0.5]
         wav = torch.FloatTensor(wav)
         return wav  # ts[1,N]
     

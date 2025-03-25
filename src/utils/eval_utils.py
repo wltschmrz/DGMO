@@ -64,13 +64,26 @@ def calculate_sisdri(ref: np.ndarray, mix: np.ndarray, est: np.ndarray) -> float
     improv_sisdr = calculate_sisdr(ref, est)
     return improv_sisdr - prev_sisdr
 
-def printing_sdrs(*, ref, mix, est, eps=1e-10):
+def printing_sdrs(*, ref, mix, est, printing=True, mode="all", eps=1e-10):
+    '''
+    Args:
+        mode, is one of ["all", "basic", "improv"]
+    '''
     sdr = calculate_sdr(ref, est)
     sisdr = calculate_sisdr(ref, est)
     sdri = calculate_sdri(ref, mix, est)
     sisdri = calculate_sisdri(ref, mix, est)
-    print(f'SDR: {sdr:.4f}, SI-SDR: {sisdr:.4f}')
-    print(f'SDRi: {sdri:.4f}, SI-SDRi: {sisdri:.4f}')
+    if printing:
+        match mode:
+            case "all":
+                print(f"SDR: {sdr:.4f}, SI-SDR: {sisdr:.4f}")
+                print(f"SDRi: {sdri:.4f}, SI-SDRi: {sisdri:.4f}")
+            case "basic":
+                print(f"SDR: {sdr:.4f}, SI-SDR: {sisdr:.4f}")
+            case "improv":
+                print(f"SDRi: {sdri:.4f}, SI-SDRi: {sisdri:.4f}")
+            case _:
+                raise ValueError
     return (sdr, sisdr, sdri, sisdri)
 
 def plot_wav_mel(
@@ -79,7 +92,8 @@ def plot_wav_mel(
         save_path="./mel.png", 
         idx=None,
         score=(0,0), 
-        config_path=None
+        config_path=None,
+        **kwargs
         ):
     fig, axes = plt.subplots(2, len(wav_arrays), figsize=(4 * len(wav_arrays)+3, 6.24))
     clip_duration = 10.24  # 클리핑 길이 (초)
@@ -139,11 +153,12 @@ def plot_wav_mel(
     # ▶ config는 맨 아래 여백에 출력
     if config_path is not None:
         config = load_config(config_path)
+        config.update(kwargs)
         config_strs = [f"{k}: {v}" for k, v in config.items()]
         if "audioldm2" in config_strs[0]:
             config_strs[0] = "ldm: AudioLDM2"
         elif "audioldm" in config_strs[0]:
-            config_strs[0] = "ldm: AudioLDM2"
+            config_strs[0] = "ldm: AudioLDM"
         elif "auffusion" in config_strs[0]:
             config_strs[0] = "ldm: Auffusion"
         config_text = "\n".join(config_strs)
