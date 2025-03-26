@@ -282,6 +282,60 @@ class DGMO(nn.Module):
 
 if __name__ == "__main__":
     from src.utils import read_wav_file, plot_wav_mel, printing_sdrs
+
+    def make_unique_dir(base_path: str, prefix: str = "single"):
+        num = 1
+        dir_path = os.path.join(base_path, f"{prefix}_{num}")
+        while os.path.exists(dir_path):
+            num += 1
+            dir_path = os.path.join(base_path, f"{prefix}_{num}")
+        os.makedirs(dir_path)
+        return dir_path
+
+    ########## TESTING JOINTLY OPT ##########
+
+    config = "./configs/DGMO.yaml"
+
+    mix_path = "./data/samples/Cat_n_Footstep.wav"
+
+    ref_paths = [
+        "./data/samples/A_cat_meowing.wav",
+        "./data/samples/Foot_steps_on_the_wooden_floor.wav"
+    ]
+
+    mel_dir = make_unique_dir("./test/mel_test", "single")
+    sep_dir = make_unique_dir("./test/result", "single")
+    mel_paths = [
+        os.path.join(mel_dir, f"cat.png"),
+        os.path.join(mel_dir, f"step.png")
+    ]
+    sep_paths = [
+        os.path.join(sep_dir, f"cat.wav"),
+        os.path.join(sep_dir, f"step.wav")
+    ]
+
+    texts = [
+        "A cat meowing",
+        "Foot steps on the wooden floor"
+    ]
+    for i in range(2):
+        dgmo = DGMO(config_path=config, device="cuda:1")
+        dgmo.inference(
+            mix_wav_path=mix_path,
+            text=texts[i],
+            save_path=sep_paths[i]
+        )
+
+        mix_wav = read_wav_file(filename=mix_path, target_duration=10.24, target_sr=16000)
+        ref_wav = read_wav_file(filename=ref_paths[i], target_duration=10.24, target_sr=16000)
+        sep_wav = read_wav_file(filename=sep_paths[i], target_duration=10.24, target_sr=16000)
+
+        scores = printing_sdrs(ref=ref_wav, mix=mix_wav, est=sep_wav)
+        wav_paths = [mix_wav, sep_wav, ref_wav]
+        plot_wav_mel(wav_paths, save_path=mel_paths[i], score=scores, config_path=config)
+
+    ########## TESTING JOINTLY OPT ##########
+    raise ValueError
     
     mix = "./data/samples/Cat_n_Footstep.wav"
     # sep = "./test/result/cat_separated.wav"
