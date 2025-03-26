@@ -273,18 +273,19 @@ class Auffusion(nn.Module):
         
         return edited_waveform
 
-    def edit_audio_with_ddim_inversion_sampling(  # ts[B, 1, T:1024, M:64] -> mel/wav
+    # edit_audio_with_ddim_inversion_sampling
+    def ddim_inv_editing(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
         original_text: Union[str, List[str]],
         text: Union[str, List[str]],
         duration: float,
         batch_size: int,                            #### <----
-        transfer_strength: float,
+        timestep_level: float,
         guidance_scale: float,
         ddim_steps: int,
         return_type: str = "ts",  # "ts" or "np" or "mel"
-        clipping = False,
+        mel_clipping = False,
     ):
         assert self.evalmode, "Let mode be eval"
         if duration > self.audio_duration:
@@ -322,7 +323,7 @@ class Auffusion(nn.Module):
             guidance_scale=guidance_scale,
             num_inference_steps=ddim_steps,
             do_cfg=False,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
         )
 
         # ========== DDIM Denoising (editing) ==========
@@ -331,7 +332,7 @@ class Auffusion(nn.Module):
             latents=noisy_latents,
             prompt_embeds=torch.cat([uncond_audio_text_embed, cond_audio_text_embed]),
             num_inference_steps=ddim_steps,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
             guidance_scale=guidance_scale,
         )
 
@@ -350,7 +351,7 @@ class Auffusion(nn.Module):
         mel_spectrogram = torch.cat(mel_spectrogram_list, dim=0)
 
         # mel clipping은 선택
-        if clipping:
+        if mel_clipping:
             mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
         if return_type == "mel":
             assert mel_spectrogram.shape[-2:] == (256,1024) # 64

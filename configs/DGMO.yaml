@@ -11,13 +11,13 @@ ldm_config_path: "./configs/audioldm.yaml"
 
 learning_rate: 0.01
 
-ddim_batchsize: 1
-batch_split: 1
+ddim_batch: 1
+num_splits: 1
 
-iteration: 2
+iteration: 3
 epochs: 200
-noise_level: 0.5
-ddim_steps: 50
+noise_level: 0.6
+ddim_steps: 25
 guidance_scale: 2.5
 
 

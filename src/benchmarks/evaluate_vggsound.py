@@ -1,29 +1,18 @@
 import os
 import sys
-import re
-from typing import Dict, List
-import traceback
+from typing import Dict
 
 proj_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 src_dir = os.path.join(proj_dir, 'src')
 sys.path.extend([proj_dir, src_dir])
 
-import matplotlib.pyplot as plt
 import csv
 import pandas as pd
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchaudio
 from tqdm import tqdm
-import pathlib
-import librosa
-import yaml
-os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
-
-from src.utils import read_wav_file, calculate_sisdr, calculate_sdr, get_mean_sdr_from_dict
-from pipeline_new import DGMO
+# os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
+from src.utils import read_wav_file, printing_sdrs, get_mean_sdr_from_dict
+from src.utils import ensure_folder_exists, clean_wav_filenames, plot_wav_mel
+from src.pipeline import DGMO
 
 class VGGSoundEvaluator:
     def __init__(
@@ -38,53 +27,94 @@ class VGGSoundEvaluator:
         self.eval_list = eval_list
         self.audio_dir = audio_dir
 
-    def __call__(self, model, sample_num, **kwargs) -> Dict:
+    def __call__(self, model, config=None, mode="plain", **kwargs) -> Dict:
         print(f'Evaluation on VGGSound.')
+        assert mode in ["plain", "joint"], "check mode"
 
-        sdris_list = []
-        sisdrs_list = []
-        
-        for eval_data in tqdm(self.eval_list):
+        result_dir = f"./test/vgg_results"
+        clean_wav_filenames(result_dir)
+        ensure_folder_exists(result_dir)
 
-            file_id, mix_wav, s0_wav, s0_text, s1_wav, s1_text = eval_data
-            labels = s0_text
+        sdrs_li = []
+        sisdrs_li = []
+        sdris_li = []
+        sisdris_li = []
+        try:
+            for eval_data in tqdm(self.eval_list):
 
-            mixture_path = os.path.join(self.audio_dir, mix_wav)
-            source_path = os.path.join(self.audio_dir, s0_wav)
+                file_id, mix_wav, s0_wav, s0_text, s1_wav, s1_text = eval_data
 
-            text = [labels]
+                mixture_path = os.path.join(self.audio_dir, mix_wav)
+                source_path1 = os.path.join(self.audio_dir, s0_wav)
+                source_path2 = os.path.join(self.audio_dir, s1_wav)
 
-            # print(mixture_path)
-            sep_wav = model.inference(
-                mix_wav_path=mixture_path,
-                text=text[0],
-                save_path=f"./test/vgg_result/{file_id}.wav",
-                )
+                texts = [s0_text, s1_text]
 
-            gt_wav = read_wav_file(filename=source_path, target_duration=10.24, target_sr=16000)
+                if mode=="plain":
+                    est_wav1 = model.inference(
+                        mix_wav_path=mixture_path,
+                        text=texts[0],
+                        save_path=f"./test/vgg_results/{file_id}/pl_sep_0.wav",
+                        )
+                    
+                    est_wav2 = model.inference(
+                        mix_wav_path=mixture_path,
+                        text=texts[1],
+                        save_path=f"./test/vgg_results/{file_id}/pl_sep_1.wav",
+                        )
 
-            sdr = calculate_sdr(gt_wav, sep_wav)
-            sisdr = calculate_sisdr(gt_wav, sep_wav)
+                elif mode=="joint":
+                    est_wav1, est_wav2 = model.joint_opt_inference(
+                        mix_wav_path=mixture_path,
+                        text=texts,
+                        save_dir=f"./test/vgg_results/{file_id}",
+                        )
 
-            sdris_list.append(sdr)
-            sisdrs_list.append(sisdr)
-            
-        return sdris_list, sisdrs_list
+                mixed_wav = read_wav_file(filename=mixture_path, target_duration=10.24, target_sr=16000)
+                ref_wav1 = read_wav_file(filename=source_path1, target_duration=10.24, target_sr=16000)
+                ref_wav2 = read_wav_file(filename=source_path2, target_duration=10.24, target_sr=16000)
+
+                scores = printing_sdrs(ref=ref_wav1, mix=mixed_wav, est=est_wav1, printing=False)
+                plot_wav_mel([mixed_wav, est_wav1, ref_wav1],
+                            save_path=f"./test/vgg_results/{file_id}/mel_{mode}_0.png",
+                            score=scores, config_path=config)
+                scores = printing_sdrs(ref=ref_wav2, mix=mixed_wav, est=est_wav2, printing=False)
+                plot_wav_mel([mixed_wav, est_wav2, ref_wav2],
+                            save_path=f"./test/vgg_results/{file_id}/mel_{mode}_1.png",
+                            score=scores, config_path=config)
+
+                sdr, sisdr, sdri, sisdri = scores
+                sdrs_li.append(sdr)
+                sisdrs_li.append(sisdr)
+                sdris_li.append(sdri)
+                sisdris_li.append(sisdri)
+        except:
+            pass
+        finally:    
+            return sdrs_li, sisdrs_li, sdris_li, sisdris_li
 
 if __name__ == "__main__":
     from utils import ensure_folder_exists, clean_wav_filenames
-    folders = ["./test/vgg_result"]
+    folders = ["./test/vgg_results"]
     for folder in folders:
         ensure_folder_exists(folder)
-        clean_wav_filenames(folder)
+        # clean_wav_filenames(folder)
 
+    config = "./configs/DGMO.yaml"
     eval = VGGSoundEvaluator()
-
-    model = DGMO(config_path="./configs/DGMO.yaml", device="cuda:1")
+    model = DGMO(config_path=config, device="cuda:1")
 
     # mean_sisdr, mean_sdri = eval((processor, audioldm), config)
-    sdris_list, sisdrs_list = eval(model, sample_num=-1)
+    sdrs_li, sisdrs_li, sdris_li, sisdris_li = eval(model, config, "joint")
 
-    df = pd.DataFrame(zip(sdris_list, sisdrs_list))
-    df.to_csv("./output.csv", index=False, header=False, encoding="utf-8")
-    print("CSV 저장 완료: sisdr_sdri_results.csv")
+    df = pd.DataFrame(zip(sdrs_li, sisdrs_li, sdris_li, sisdris_li))
+    df.to_csv("./test/vgg_joint.csv", index=False, header=False, encoding="utf-8")
+    print("CSV 저장 완료: ./test/vgg_joint.csv")
+    import numpy as np
+    mean_sdr = np.mean(sdrs_li)
+    mean_sisdr = np.mean(sisdrs_li)
+    mean_sdri = np.mean(sdris_li)
+    mean_sisdri = np.mean(sisdris_li)
+    print(f"\n>> SDR: {mean_sdr}\n>> SISDR: {mean_sisdr}\n\
+>> SDRi: {mean_sdri}\n>> SISDRi: {mean_sisdri}"
+)

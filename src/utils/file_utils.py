@@ -19,3 +19,12 @@ def clean_wav_filenames(dir_path):
 
 def ensure_folder_exists(folder_path):
     os.makedirs(folder_path, exist_ok=True)
+
+def make_unique_dir(base_path: str, prefix: str = "single"):
+    num = 1
+    dir_path = os.path.join(base_path, f"{prefix}_{num}")
+    while os.path.exists(dir_path):
+        num += 1
+        dir_path = os.path.join(base_path, f"{prefix}_{num}")
+    os.makedirs(dir_path)
+    return dir_path

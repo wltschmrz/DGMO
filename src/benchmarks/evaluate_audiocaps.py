@@ -1,70 +1,44 @@
 import os
 import sys
-import re
-from typing import Dict, List
-import traceback
+from typing import Dict
 
 proj_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 src_dir = os.path.join(proj_dir, 'src')
 sys.path.extend([proj_dir, src_dir])
 
-import matplotlib.pyplot as plt
-
 import csv
 import pandas as pd
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
 from tqdm import tqdm
-import pathlib
-import librosa
-import yaml
 os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
 
-import soundfile as sf
-from src.models.audioldm import AudioLDM
-from src.models.audioldm2 import AudioLDM2
-from src.models.auffusion import Auffusion
-
-from src.data_processing import AudioDataProcessor
-from src.pipeline import inference
-
-import torchaudio
-from utils import (
-    load_audio_torch,
-    calculate_sdr,
-    calculate_sisdr,
-    get_mean_sdr_from_dict,
-    parse_yaml
-)
+from src.utils import read_wav_file, calculate_sisdr, calculate_sdr, get_mean_sdr_from_dict
+from src.pipeline import DGMO
 
 class AudioCapsEvaluator:
-    def __init__(self, query='caption', sampling_rate=32000) -> None:
+    def __init__(
+            self,
+            query='caption',
+            metadata_pth=f'./src/benchmarks/metadata/audiocaps_eval.csv',
+            audio_dir=f'./data/audiocaps',
+            ) -> None:
+        
         self.query = query
-        self.sampling_rate = sampling_rate
-        with open(f'src/benchmarks/metadata/audiocaps_eval.csv') as csv_file:
+        with open(metadata_pth) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             eval_list = [row for row in csv_reader][1:]
         self.eval_list = eval_list
-        self.audio_dir = f'data/audiocaps'
+        self.audio_dir = audio_dir
 
-    def __call__(self, pl_model, config) -> Dict:
+    def __call__(self, model, **kwargs) -> Dict:
         print(f'Evaluation on AudioCaps with [{self.query}] queries.')
-
-        processor, audioldm = pl_model
-        device = audioldm.device
-
-        for param in audioldm.parameters():
-            param.requires_grad = False
 
         sisdrs_list = []
         sdris_list = []
-        samples = config['samples']
         
-        for eval_data in tqdm(self.eval_list[:samples]):
+        for eval_data in tqdm(self.eval_list):
 
-            idx, caption, labels, _, _ = eval_data
+            idx, caption, labels, src_wav, noise_wav = eval_data
 
             source_path = os.path.join(self.audio_dir, f'segment-{idx}.wav')
             mixture_path = os.path.join(self.audio_dir, f'mixture-{idx}.wav')

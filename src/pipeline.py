@@ -3,181 +3,314 @@
 
 import os
 import sys
-
 proj_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-src_dir = os.path.join(proj_dir, 'src_audioldm')
+src_dir = os.path.join(proj_dir, 'src')
 sys.path.extend([proj_dir, src_dir])
-
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import matplotlib.pyplot as plt
-import soundfile as sf
-from models.audioldm import AudioLDM
-from models.audioldm2 import AudioLDM2
-from models.mask import Mask
-from data_processing import AudioDataProcessor
-from utils import calculate_sisdr, calculate_sdr
+from src.models import AudioLDM, AudioLDM2, Auffusion, Mask, Multi_Class_Mask
+from src.utils import load_config, save_wav_file, AudioDataProcessor
 
-def inference(audioldm, processor, target_path, mixed_path, config):
-    device = audioldm.device
-    learning_rate = config['learning_rate']
-    num_epochs = config['num_epochs']
-    batchsize = config['batchsize']
-    strength = config['strength']
-    iteration = config['iteration']
-    text = config['text']
-    steps = config['steps']
+class DGMO(nn.Module):
+    def __init__(self, *, config_path="./configs/DGMO.yaml", device="cuda", **kwargs):
+        super(DGMO, self).__init__()
+        self.device = torch.device(device)
 
-    iter_sisdrs = []
-    iter_sdris = []
-    
-    mask = Mask(channel=1, height=513, width=1024, device=device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(mask.parameters(), lr=learning_rate)
-
-    for iter in range(iteration):
-        processor.duration = 5.12
-        target_wav = processor.read_wav_file(target_path)
-        mixed_wav = processor.read_wav_file(mixed_path)
-        target_wav = np.concatenate([target_wav, target_wav], axis=1)
-        mixed_wav = np.concatenate([mixed_wav, mixed_wav], axis=1)
-        assert mixed_wav.ndim == 2 and mixed_wav.shape[1] == 163840, mixed_wav.shape
-
-        mixed_wav_ = processor.prepare_wav(mixed_wav)
-        mixed_stft, mixed_stft_c = processor.wav_to_stft(mixed_wav_)
-        mixed_mel = processor.wav_to_mel(mixed_wav_)
-        batch_split = 4
-        batchsize_ = batchsize // batch_split
-        mixed_mels = mixed_mel.repeat(batchsize_, 1, 1, 1)
-        ref_mels = mixed_mels
+        config = load_config(config_path) if config_path else {}
+        for key in list(kwargs):
+            if key in config:
+                config[key] = kwargs.pop(key)
+        self._apply_config(config)
         
-        if iter != 0:
-            masked_wav = processor.read_wav_file(masked_path)
-            masked_wav_ = processor.prepare_wav(masked_wav)
-            masked_stft, masked_stft_c = processor.wav_to_stft(masked_wav_)
-            masked_mel = processor.wav_to_mel(masked_wav_)
-            batch_split = 4
-            batchsize_ = batchsize // batch_split
-            masked_mels = mixed_mel.repeat(batchsize_, 1, 1, 1)
-            ref_mels = masked_mels
+        ldm_config = load_config(self.ldm_config_path) if self.ldm_config_path else {}
+        for key, value in ldm_config.items():
+            if key == "repo_id":
+                setattr(self, key, value)
 
-        if iter == 0:
-            mel_sample_list=[]
-            for i in range(batch_split):
-                # mel_samples = audioldm.noise_editing(
-                #             mel=ref_mels,
-                #             # original_text=mixed_text,
-                #             text=text,
-                #             duration=10.24,
-                #             batch_size=batchsize_,
-                #             transfer_strength=strength,
-                #             guidance_scale=2.5,
-                #             ddim_steps=steps,
-                #             return_type="mel",
-                #             clipping = False,
-                #         )
-                mel_samples = audioldm.ddim_inv_editing(
-                            mel=ref_mels,
-                            original_text="",
-                            text=text,
-                            duration=10.24,
-                            batch_size=batchsize_,
-                            timestep_level=strength,
-                            guidance_scale=2.5,
-                            ddim_steps=steps,
-                            return_type="mel",
-                            mel_clipping = False,
-                        )
-                mel_sample_list.append(mel_samples)
-
-        mel_samples = torch.cat(mel_sample_list, dim=0)
-        assert mel_samples.size(0) == batchsize and mel_samples.dim() == 4, (mel_samples.shape, batchsize)
-
-        batch_sample = 0
-        wav_sample = processor.inverse_mel_with_phase(mel_samples[batch_sample:batch_sample+1], mixed_stft_c)
-        wav_sample = wav_sample.squeeze()
-        sf.write(f'./test/batch_samples/edited_{text}_{strength:.4f}_{iter}_{batch_sample}.wav', wav_sample, 16000)
-
-        # ------------------------------------------------------------------ #
-
-        sisdrs_list = []
-        sdris_list = []
-        loss_values = []
-
-        for epoch in range(num_epochs):
-
-            optimizer.zero_grad()  # 그래디언트 초기화
-            masked_stft = (mixed_stft - mixed_stft.min()) * mask() + mixed_stft.min()  #ts[1,513,1024]
+        repo_type = self.get_model_type(self.repo_id)
+        match repo_type:
+            case "audioldm":
+                self.ldm = AudioLDM(ckpt=self.repo_id, device=self.device, **kwargs)
+            case "audioldm2":
+                self.ldm = AudioLDM2(ckpt=self.repo_id, device=self.device, **kwargs)
+            case "auffusion":
+                self.ldm = Auffusion(ckpt=self.repo_id, device=self.device, **kwargs)
+            case _:
+                raise ValueError(f"Invalid repo_id: {self.repo_id}")
             
-            masked_mel = processor.masked_stft_to_masked_mel(masked_stft)  # [1,1,1024,512]
-            masked_mel_expended = masked_mel.repeat(batchsize, 1, 1, 1)
+        self.processor = AudioDataProcessor(config_path=self.ldm_config_path, device=self.device, **kwargs)
 
-            loss = criterion(mel_samples, masked_mel_expended)  # 손실 계산
+        self.ldm.eval()
+        for param in self.ldm.parameters():
+            param.requires_grad = False  # 모든 가중치가 학습되지 않음
 
-            loss.backward()  # 역전파
-            optimizer.step()  # 가중치 업데이트
+    def _apply_config(self, config):
+        for key, value in config.items():
+            if isinstance(value, dict):
+                self._apply_config(value)
+            else:
+                setattr(self, key, value)
+    
+    def get_model_type(self, repo_id):
+        "Assume that repo_id be 'file/model_name-repo_name'"
+        base_name = repo_id.rsplit("/", 1)[-1]
+        model_name = base_name.split("-")[0]
+        return model_name
+    
+    def inference(
+            self, 
+            mix_wav_path: str = None, 
+            text: str = None, 
+            save_path="./test/sample.wav",
+            thresholding=True,
+            ):
+        assert isinstance(text, str), "text must be a str"
 
-            loss_values.append(loss.item())  # 손실값 저장
+        mask = Mask(channel=1,
+            height=self.processor.n_freq_bins,
+            width=self.processor.n_time_frames,
+            device=self.device)
+        optimizer = optim.Adam(mask.parameters(), lr=self.learning_rate)
+        criterion = nn.MSELoss()
 
-            ##
-            wav_sep = processor.inverse_stft(masked_stft, mixed_stft_c)
-            target_wav = target_wav.squeeze(0)
-            mixed_wav = mixed_wav.squeeze(0)
-            assert len(wav_sep) <= len(target_wav), (len(wav_sep), len(target_wav))
-            wav_src = target_wav[:len(wav_sep)]
-            wav_mix = mixed_wav[:len(wav_sep)]
+        assert self.ddim_batch % self.num_splits == 0,\
+            "ddim_batch must be divisible by batch_split"
+        chunks = self.ddim_batch // self.num_splits  # 몫
 
-            sdr_no_sep = calculate_sdr(ref=wav_src, est=wav_mix)
-            sdr = calculate_sdr(ref=wav_src, est=wav_sep)
-            sdri = sdr - sdr_no_sep
-            sisdr = calculate_sisdr(ref=wav_src, est=wav_sep)
+        mix_wav = self.processor.read_wav_file(mix_wav_path)
+        assert mix_wav.shape[1] == self.processor.sample_length, mix_wav.shape
+        mix_wav_norm = self.processor.prepare_wav(mix_wav)
+        mix_stft_mag, mix_stft_complex = self.processor.wav_to_stft(mix_wav_norm)
+        cur_stft_mag = mix_stft_mag
 
-            sisdrs_list.append(sisdr)
-            sdris_list.append(sdri)
-            target_wav = np.expand_dims(target_wav, axis=0)
-            mixed_wav = np.expand_dims(mixed_wav, axis=0)
-            ##
+        for iter in range(self.iteration):
+            cur_mel = self.processor.stft_to_mel(cur_stft_mag)
+            vae_input = self.processor.preprocess_spec(cur_mel)
+            vae_inputs = vae_input.repeat(chunks, 1, 1, 1)
 
-            # if (epoch+1) % 100 == 0:
-            # #     print(f"Epoch [{epoch}/{num_epochs}], Loss: {loss.item():.4f}")
-            #     iter_sisdrs.append(sisdrs_list[-1])
-            #     iter_sdris.append(sdris_list[-1]_
+            # ----- Reference Generation ----- #
+            mel_sample_list=[]
+            for _ in range(self.num_splits):
+                ref_mels = self.ldm.ddim_inv_editing(
+                    mel=vae_inputs,
+                    original_text="",
+                    text=text,
+                    duration=self.processor.duration,
+                    batch_size=chunks,
+                    timestep_level=self.noise_level,
+                    guidance_scale=self.guidance_scale,
+                    ddim_steps=self.ddim_steps,
+                    return_type="mel",  # "ts"/"np"/"mel"
+                    mel_clipping = False,
+                )
+                mel_sample_list.append(ref_mels)
+
+            ref_mels = torch.cat(mel_sample_list, dim=0)
+            assert ref_mels.size(0) == self.ddim_batch and ref_mels.dim() == 4,\
+                (ref_mels.shape, self.ddim_batch)
+
+            # ------- Mask Optimization ------- #
+            loss_values = []
+            for epoch in range(self.epochs):
+                optimizer.zero_grad()
+                masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
+                masked_mel = self.processor.stft_to_mel(masked_stft)  # [1,M,T]
+                msked_vae_mel = self.processor.preprocess_spec(masked_mel)  # [1,1,T*,M*]
+                msked_vae_mels = msked_vae_mel.repeat(self.ddim_batch, 1, 1, 1)
+
+                loss = criterion(ref_mels, msked_vae_mels)
+                loss.backward()
+                optimizer.step()
+                loss_values.append(loss.item())
+            
+            with torch.no_grad():
+                final_mask = mask().detach().clone()
+                if thresholding:
+                    threshold = 0.8
+                    final_mask[final_mask >= threshold] = 1.0
+                cur_stft_mag = (mix_stft_mag - mix_stft_mag.min()) * final_mask + mix_stft_mag.min()  #ts[1,513,1024]
                 
-        # ------------------------------------------------------------------ #
+        msked_wav = self.processor.inverse_stft(cur_stft_mag, mix_stft_complex)
+        save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
+        return msked_wav  # np[1,N]
 
-        plt.plot(loss_values)
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Loss Trend')
-        plt.savefig(f'./test/plot/loss_{text}_{iter}.png')
-        plt.close()
+    def joint_opt_inference(
+            self, 
+            mix_wav_path: str = None, 
+            text: list = None, 
+            save_dir="./test/mixed_id"
+            ):
+        assert isinstance(text, list) and len(text) >= 2,\
+            "text must be a list with at least 2 elements"
+        os.makedirs(save_dir, exist_ok=True)
+        
+        num_class = len(text)
+        mask = Multi_Class_Mask(
+            num_classes=num_class,
+            height=self.processor.n_freq_bins,
+            width=self.processor.n_time_frames,
+            device=self.device)
+        optimizer = optim.Adam(mask.parameters(), lr=self.learning_rate)
+        criterion = nn.MSELoss()
 
-        plt.plot(sisdrs_list)
-        plt.xlabel('Epoch')
-        plt.ylabel('sisdr')
-        plt.title('sisdr Trend')
-        plt.savefig(f'./test/plot/sisdr_{text}_{iter}.png')
-        plt.close()
+        assert self.ddim_batch % self.num_splits == 0,\
+            "ddim_batch must be divisible by batch_split"
+        chunks = self.ddim_batch // self.num_splits  # 몫
+        
+        mix_wav = self.processor.read_wav_file(mix_wav_path)
+        assert mix_wav.shape[1] == self.processor.sample_length, mix_wav.shape
+        mix_wav_norm = self.processor.prepare_wav(mix_wav)
+        mix_stft_mag, mix_stft_complex = self.processor.wav_to_stft(mix_wav_norm)
+        cur_all_stfts = [mix_stft_mag for _ in range(num_class)]
 
-        plt.plot(sdris_list)
-        plt.xlabel('Epoch')
-        plt.ylabel('sdri')
-        plt.title('sdri Trend')
-        plt.savefig(f'./test/plot/sdri_{text}_{iter}.png')
-        plt.close()
+        for iter_idx in range(self.iteration):
+            all_ref_mels = []  # list of [ddim_batch, 1, T*, M*]
+            for cls_idx, class_text in enumerate(text):
+                cur_stft_mag = cur_all_stfts[cls_idx]  # np[1, N]
+                cur_mel = self.processor.stft_to_mel(cur_stft_mag)
+                vae_input = self.processor.preprocess_spec(cur_mel)
+                vae_inputs = vae_input.repeat(chunks, 1, 1, 1)  # [chunk, 1, T*, M*]
+            
+            # ----- Reference Generation ----- #
+                mel_sample_list=[]
+                for _ in range(self.num_splits):
+                    ref_mels = self.ldm.ddim_inv_editing(
+                        mel=vae_inputs,
+                        original_text="",
+                        text=class_text,
+                        duration=self.processor.duration,
+                        batch_size=chunks,
+                        timestep_level=self.noise_level,
+                        guidance_scale=self.guidance_scale,
+                        ddim_steps=self.ddim_steps,
+                        return_type="mel",  # "ts"/"np"/"mel"
+                        mel_clipping = False,
+                    )
+                    mel_sample_list.append(ref_mels)  # [chunk, 1, T*, M*]
+                
+                single_ref_mels = torch.cat(mel_sample_list, dim=0)  # [batch, 1, T*, M*]
+                assert single_ref_mels.size(0) == self.ddim_batch and single_ref_mels.dim() == 4,\
+                    (single_ref_mels.shape, self.ddim_batch)
+                
+                all_ref_mels.append(single_ref_mels)  # [len(text) * [batch, 1, T*, M*]]
+            
+            # ------- Mask Optimization ------- #
+            loss_values = []
+            for epoch in range(self.epochs):
+                optimizer.zero_grad()
+                masking = mask()  # [num_class, H, W]
+                total_loss = 0.0
+                for cls_idx in range(num_class):
+                    single_mask = masking[cls_idx:cls_idx+1, :, :]  # [1, H, W]
+                    
+                    single_msked_stft = (mix_stft_mag - mix_stft_mag.min()) * single_mask + mix_stft_mag.min()
+                    single_msked_mel = self.processor.stft_to_mel(single_msked_stft)
+                    single_msked_vae_mel = self.processor.preprocess_spec(single_msked_mel)
+                    
+                    single_msked_vae_mels = single_msked_vae_mel.repeat(self.ddim_batch, 1, 1, 1)  # [batch, 1, T*, M*]
+                    single_ref_mels = all_ref_mels[cls_idx]
+                    
+                    cls_loss = criterion(single_ref_mels, single_msked_vae_mels)
+                    total_loss += cls_loss
 
-        iter_sisdrs.append(sisdr)
-        iter_sdris.append(sdri)
+                total_loss.backward()
+                optimizer.step()
+                loss_values.append(total_loss.item())
 
-        wav_sep = processor.inverse_stft(masked_stft, mixed_stft_c)
+            with torch.no_grad():
+                final_mask = mask().detach().clone()  # [num_class, H, W]
+                
+                new_msked_stfts = []
+                for cls_idx in range(num_class):
+                    single_msked_stft = (mix_stft_mag - mix_stft_mag.min()) * final_mask[cls_idx:cls_idx+1] + mix_stft_mag.min()  #ts[1,513,1024]
+                    new_msked_stfts.append(single_msked_stft)
+                cur_all_stfts = new_msked_stfts
 
-        sf.write(f'./test/result/sep_{text}_{iter}.wav', wav_sep, 16000)
+        est_wavs = []
+        for cls_idx, single_msked_stft in enumerate(new_msked_stfts):
+            rm = True if cls_idx+1 == len(new_msked_stfts) else False
+            est_wav = self.processor.inverse_stft(single_msked_stft, mix_stft_complex, fac_rm=rm)
+            est_wavs.append(est_wav)
+            save_path = os.path.join(save_dir, f"sep_{cls_idx}.wav")
+            save_wav_file(filename=save_path,
+                wav_np=est_wav,
+                target_sr=self.processor.sampling_rate)
+        return est_wavs    # [class * np[1,N]]
 
-        masked_path = f'./test/result/sep_{text}_{iter}.wav'
-        # print(f"iteration: {iter} // sisdr: {sisdrs_list[-1]:.4f}, sdri: {sdris_list[-1]:.4f}")
+if __name__ == "__main__":
+    from src.utils import read_wav_file, plot_wav_mel, printing_sdrs, make_unique_dir
 
-    # print(f"Final: sample: {text}\-> sisdr: {sisdrs_list[-1]:.4f}, sdri: {sdris_list[-1]:.4f}")
-    # assert len(iter_sisdrs) == len(iter_sdris) == 5, (len(iter_sisdrs), len(iter_sdris))
-    return iter_sisdrs, iter_sdris
+    config = "./configs/DGMO.yaml"
+
+    mix_path = "./data/samples/Cat_n_Footstep.wav"
+    ref_paths = [
+        "./data/samples/A_cat_meowing.wav",
+        "./data/samples/Foot_steps_on_the_wooden_floor.wav"
+    ]
+    texts = [
+        "A cat meowing",
+        "Foot steps on the wooden floor"
+    ]
+
+    dgmo = DGMO(config_path=config, device="cuda:1",
+                # iteration=iter
+                )
+
+    ########## TESTING BASIC DGMO ##########
+    '''
+    save_dir = make_unique_dir("./test/results", "single")
+    mel_paths = [
+        os.path.join(save_dir, f"cat.png"),
+        os.path.join(save_dir, f"step.png")
+    ]
+    sep_paths = [
+        os.path.join(save_dir, f"cat.wav"),
+        os.path.join(save_dir, f"step.wav")
+    ]
+
+    for i in range(2):
+        sep_wav = dgmo.inference(
+            mix_wav_path=mix_path,
+            text=texts[i],
+            save_path=sep_paths[i]
+        )
+
+        mix_wav = read_wav_file(filename=mix_path, target_duration=10.24, target_sr=16000)
+        ref_wav = read_wav_file(filename=ref_paths[i], target_duration=10.24, target_sr=16000)
+
+        scores = printing_sdrs(ref=ref_wav, mix=mix_wav, est=sep_wav)
+        wav_paths = [mix_wav, sep_wav, ref_wav]
+        plot_wav_mel(wav_paths, save_path=mel_paths[i], score=scores, config_path=config)
+    '''
+    ########## TESTING JOINTLY OPT ##########
+
+    # for iter in range(1, 11):
+    save_dir = make_unique_dir("./test/results", "jointly")
+
+    sep_wavs = dgmo.joint_opt_inference(
+        mix_wav_path=mix_path,
+        text=texts,
+        save_dir=save_dir,
+    )
+
+    sep_path1 = os.path.join(save_dir, f"sep_0.wav")
+    sep_path2 = os.path.join(save_dir, f"sep_1.wav")
+
+    mix_wav = read_wav_file(filename=mix_path, target_duration=10.24, target_sr=16000)
+    ref_wav1 = read_wav_file(filename=ref_paths[0], target_duration=10.24, target_sr=16000)
+    ref_wav2 = read_wav_file(filename=ref_paths[1], target_duration=10.24, target_sr=16000)
+    sep_wav1, sep_wav2 = sep_wavs
+
+    scores = printing_sdrs(ref=ref_wav1, mix=mix_wav, est=sep_wav1)
+    wav_paths = [mix_wav, sep_wav1, ref_wav1]
+    png_save_path = os.path.join(save_dir, f"sep_0.png")
+    plot_wav_mel(wav_paths, save_path=png_save_path, score=scores, config_path=config,
+                # iteration=iter
+                )
+    scores = printing_sdrs(ref=ref_wav2, mix=mix_wav, est=sep_wav2)
+    wav_paths = [mix_wav, sep_wav2, ref_wav2]
+    png_save_path = os.path.join(save_dir, f"sep_1.png")
+    plot_wav_mel(wav_paths, save_path=png_save_path, score=scores, config_path=config,
+                # iteration=iter
+                )
