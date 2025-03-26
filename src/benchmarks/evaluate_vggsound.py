@@ -102,14 +102,14 @@ if __name__ == "__main__":
 
     config = "./configs/DGMO.yaml"
     eval = VGGSoundEvaluator()
-    model = DGMO(config_path=config, device="cuda:1")
+    model = DGMO(config_path=config, device="cuda:2")
 
     # mean_sisdr, mean_sdri = eval((processor, audioldm), config)
-    sdrs_li, sisdrs_li, sdris_li, sisdris_li = eval(model, config, "joint")
+    sdrs_li, sisdrs_li, sdris_li, sisdris_li = eval(model, config, "plain")
 
     df = pd.DataFrame(zip(sdrs_li, sisdrs_li, sdris_li, sisdris_li))
-    df.to_csv("./test/vgg_joint.csv", index=False, header=False, encoding="utf-8")
-    print("CSV 저장 완료: ./test/vgg_joint.csv")
+    df.to_csv("./test/vgg_plain.csv", index=False, header=False, encoding="utf-8")
+    print("CSV 저장 완료: ./test/vgg_plain.csv")
     import numpy as np
     mean_sdr = np.mean(sdrs_li)
     mean_sisdr = np.mean(sisdrs_li)
