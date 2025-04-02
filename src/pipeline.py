@@ -62,10 +62,12 @@ class DGMO(nn.Module):
             self, 
             mix_wav_path: str = None, 
             text: str = None, 
-            save_path="./test/sample.wav",
+            save_dir="./test",
+            save_fname="sample.wav",
             thresholding=True,
             ):
         assert isinstance(text, str), "text must be a str"
+        os.makedirs(save_dir, exist_ok=True)
 
         mask = Mask(channel=1,
             height=self.processor.n_freq_bins,
@@ -132,6 +134,7 @@ class DGMO(nn.Module):
                 cur_stft_mag = (mix_stft_mag - mix_stft_mag.min()) * final_mask + mix_stft_mag.min()  #ts[1,513,1024]
                 
         msked_wav = self.processor.inverse_stft(cur_stft_mag, mix_stft_complex)
+        save_path = os.path.join(save_dir, save_fname)
         save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
         return msked_wav  # np[1,N]
 

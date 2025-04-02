@@ -9,13 +9,13 @@
 # AudioLDM data preprocessing config
 ldm_config_path: "./configs/audioldm.yaml"
 
-learning_rate: 0.01
+learning_rate: 0.005
 
-ddim_batch: 1
+ddim_batch: 2
 num_splits: 1
 
 iteration: 3
-epochs: 200
+epochs: 300
 noise_level: 0.6
 ddim_steps: 25
 guidance_scale: 2.5

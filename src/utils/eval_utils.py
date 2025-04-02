@@ -93,6 +93,7 @@ def plot_wav_mel(
         idx=None,
         score=(0,0), 
         config_path=None,
+        text=None,
         **kwargs
         ):
     fig, axes = plt.subplots(2, len(wav_arrays), figsize=(4 * len(wav_arrays)+3, 6.24))
@@ -135,7 +136,7 @@ def plot_wav_mel(
         axes[1, i].set_title(f"{name} Mel Spectrogram")
     
     # ▶ 제목은 ID만 표시
-    plt.suptitle(f"ID: {idx}", fontsize=16)
+    plt.suptitle(f"ID: {idx} / Target: {text}", fontsize=16)
 
     # ▶ SDR 정보는 바로 아래 따로 줄 생성
     if len(score) == 2:
