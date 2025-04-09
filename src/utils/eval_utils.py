@@ -164,7 +164,7 @@ def plot_wav_mel(
             config_strs[0] = "ldm: Auffusion"
         config_text = "\n".join(config_strs)
     plt.subplots_adjust(right=0.85)
-    fig.text(0.853, 0.35, config_text, fontsize=12, va='top', ha='left', 
+    fig.text(0.853, 0.4, config_text, fontsize=12, va='top', ha='left', 
              linespacing=1.4, fontfamily='monospace',
              bbox=dict(
         facecolor='white',   # 박스 배경색

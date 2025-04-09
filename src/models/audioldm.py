@@ -20,74 +20,6 @@ from transformers import (
 # Suppress partial model loading warning
 os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
 
-autoencoder_config = """
-## **1 Autoencoder (VAE)**
-- `_class_name`: "AutoencoderKL"
-- `in_channels`: 1, `out_channels`: 1
-- `down_block_types`: ["DownEncoderBlock2D"] x 3
-- `up_block_types`: ["UpDecoderBlock2D"] x 3
-- `block_out_channels`: [128, 256, 512]
-- `latent_channels`: 8
-- `sample_size`: 512
-- `scaling_factor`: 0.9228
-- `force_upcast`: True  # 강제 업캐스트 (연산 안정성 증가)
-- `use_quant_conv`: True  # Quantization을 위한 Conv 사용
-- `use_post_quant_conv`: True  # Post-Quantization Conv 사용
-- `mid_block_add_attention`: True  # 중간 블록에서 Attention 사용
-"""
-text_encoder_config = """
-## **2 Text Encoder (CLAP)**
-- `_class_name`: "ClapTextModelWithProjection"
-- `hidden_size`: 768, `num_hidden_layers`: 12
-- `num_attention_heads`: 12, `projection_dim`: 512
-- `vocab_size`: 50265
-- `hidden_act`: "gelu"
-- `layer_norm_eps`: 1e-12  # LayerNorm epsilon
-- `max_position_embeddings`: 514  # 최대 토큰 길이
-"""
-UNet_config = """
-## **3 UNet**
-- `_class_name`: "UNet2DConditionModel"
-- `sample_size`: 128, `in_channels`: 8, `out_channels`: 8
-- `down_block_types`: ["DownBlock2D", "CrossAttnDownBlock2D"] x 3
-- `up_block_types`: ["CrossAttnUpBlock2D"] x 3 + ["UpBlock2D"]
-- `block_out_channels`: [128, 256, 384, 640]
-- `attention_head_dim`: 8, `cross_attention_dim`: [128, 256, 384, 640]
-- `time_embedding_type`: "positional"  # 타임스텝 임베딩 방식
-- `conv_in_kernel`: 3, `conv_out_kernel`: 3  # 컨볼루션 커널 크기
-- `resnet_out_scale_factor`: 1.0  # ResNet 출력 스케일 팩터
-- `projection_class_embeddings_input_dim`: 512  # Class 임베딩 차원
-"""
-vocoder_config = """
-## **4 Vocoder (SpeechT5HifiGan)**
-- `_class_name`: "SpeechT5HifiGanConfig"
-- `model_type`: "hifigan", `model_in_dim`: 64
-- `sampling_rate`: 16000, `torch_dtype`: "float32"
-- `upsample_rates`: [5, 4, 2, 2, 2] → 총 160배 업샘플링
-- `upsample_kernel_sizes`: [16, 16, 8, 4, 4]  # 업샘플링 커널 크기
-- `upsample_initial_channel`: 1024  # 첫 번째 업샘플링 계층의 채널 수
-- `resblock_kernel_sizes`: [3, 7, 11], `resblock_dilation_sizes`: [[1,3,5]] x 3
-- `normalize_before`: False  # 입력 Mel-Spectrogram 정규화 없음
-- `leaky_relu_slope`: 0.1  # Leaky ReLU 활성화 함수
-"""
-schedular_config = """
-## **5 DDIM Scheduler**
-- `_class_name`: "DDIMScheduler"
-- `num_train_timesteps`: 1000
-- `beta_start`: 0.0015, `beta_end`: 0.0195
-- `beta_schedule`: "scaled_linear"
-- `prediction_type`: "epsilon"
-- `clip_sample`: False, `thresholding`: False
-- `set_alpha_to_one`: False  # 알파 값을 1로 고정하지 않음
-- `steps_offset`: 1  # DDIM 샘플링 시 오프셋
-- `dynamic_thresholding_ratio`: 0.995  # 동적 Thresholding 비율
-- `clip_sample_range`: 1.0  # 샘플 클리핑 범위
-- `sample_max_value`: 1.0  # 샘플 최대 값
-- `timestep_spacing`: "leading"  # 타임스텝 간격
-- `rescale_betas_zero_snr`: False  # SNR=0에서 베타 값 재조정 없음
-- `_diffusers_version`: "0.15.0.dev0"  # 사용된 diffusers 버전
-"""
-
 class AudioLDM(nn.Module):
     def __init__(self, ckpt="cvssp/audioldm", config=None, device='cuda'):
         super().__init__()
@@ -500,8 +432,77 @@ class AudioLDM(nn.Module):
         return edited_waveform
 
 if __name__ == '__main__':
-    audioldm = AudioLDM(device='cpu')
+    audioldm = AudioLDM()
     mel = torch.randn(size=(3,8,256,16))
     # wav = audioldm.encode_audios(mel)
     wav = audioldm.noising(mel)
     print(wav.shape);print(wav.dtype)
+
+"""
+**1 Autoencoder (VAE)**
+
+- `_class_name`: "AutoencoderKL"
+- `in_channels`: 1, `out_channels`: 1
+- `down_block_types`: ["DownEncoderBlock2D"] x 3
+- `up_block_types`: ["UpDecoderBlock2D"] x 3
+- `block_out_channels`: [128, 256, 512]
+- `latent_channels`: 8
+- `sample_size`: 512
+- `scaling_factor`: 0.9228
+- `force_upcast`: True  # 강제 업캐스트 (연산 안정성 증가)
+- `use_quant_conv`: True  # Quantization을 위한 Conv 사용
+- `use_post_quant_conv`: True  # Post-Quantization Conv 사용
+- `mid_block_add_attention`: True  # 중간 블록에서 Attention 사용
+
+**2 Text Encoder (CLAP)**
+
+- `_class_name`: "ClapTextModelWithProjection"
+- `hidden_size`: 768, `num_hidden_layers`: 12
+- `num_attention_heads`: 12, `projection_dim`: 512
+- `vocab_size`: 50265
+- `hidden_act`: "gelu"
+- `layer_norm_eps`: 1e-12  # LayerNorm epsilon
+- `max_position_embeddings`: 514  # 최대 토큰 길이
+
+**3 UNet**
+
+- `_class_name`: "UNet2DConditionModel"
+- `sample_size`: 128, `in_channels`: 8, `out_channels`: 8
+- `down_block_types`: ["DownBlock2D", "CrossAttnDownBlock2D"] x 3
+- `up_block_types`: ["CrossAttnUpBlock2D"] x 3 + ["UpBlock2D"]
+- `block_out_channels`: [128, 256, 384, 640]
+- `attention_head_dim`: 8, `cross_attention_dim`: [128, 256, 384, 640]
+- `time_embedding_type`: "positional"  # 타임스텝 임베딩 방식
+- `conv_in_kernel`: 3, `conv_out_kernel`: 3  # 컨볼루션 커널 크기
+- `resnet_out_scale_factor`: 1.0  # ResNet 출력 스케일 팩터
+- `projection_class_embeddings_input_dim`: 512  # Class 임베딩 차원
+
+**4 Vocoder (SpeechT5HifiGan)**
+
+- `_class_name`: "SpeechT5HifiGanConfig"
+- `model_type`: "hifigan", `model_in_dim`: 64
+- `sampling_rate`: 16000, `torch_dtype`: "float32"
+- `upsample_rates`: [5, 4, 2, 2, 2] → 총 160배 업샘플링
+- `upsample_kernel_sizes`: [16, 16, 8, 4, 4]  # 업샘플링 커널 크기
+- `upsample_initial_channel`: 1024  # 첫 번째 업샘플링 계층의 채널 수
+- `resblock_kernel_sizes`: [3, 7, 11], `resblock_dilation_sizes`: [[1,3,5]] x 3
+- `normalize_before`: False  # 입력 Mel-Spectrogram 정규화 없음
+- `leaky_relu_slope`: 0.1  # Leaky ReLU 활성화 함수
+
+**5 DDIM Scheduler**
+
+- `_class_name`: "DDIMScheduler"
+- `num_train_timesteps`: 1000
+- `beta_start`: 0.0015, `beta_end`: 0.0195
+- `beta_schedule`: "scaled_linear"
+- `prediction_type`: "epsilon"
+- `clip_sample`: False, `thresholding`: False
+- `set_alpha_to_one`: False  # 알파 값을 1로 고정하지 않음
+- `steps_offset`: 1  # DDIM 샘플링 시 오프셋
+- `dynamic_thresholding_ratio`: 0.995  # 동적 Thresholding 비율
+- `clip_sample_range`: 1.0  # 샘플 클리핑 범위
+- `sample_max_value`: 1.0  # 샘플 최대 값
+- `timestep_spacing`: "leading"  # 타임스텝 간격
+- `rescale_betas_zero_snr`: False  # SNR=0에서 베타 값 재조정 없음
+- `_diffusers_version`: "0.15.0.dev0"  # 사용된 diffusers 버전
+"""

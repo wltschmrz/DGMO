@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     config = "./configs/DGMO.yaml"
     eval = VGGSoundEvaluator()
-    model = DGMO(config_path=config, device="cuda:3")  ##
+    model = DGMO(config_path=config, device="cuda:0")  ##
 
     # mean_sisdr, mean_sdri = eval((processor, audioldm), config)
     sdrs_li, sisdrs_li, sdris_li, sisdris_li = eval(model, config, "joint")  ##

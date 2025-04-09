@@ -20,5 +20,5 @@ noise_level: 0.6
 ddim_steps: 25
 guidance_scale: 2.5
 
-
+masking_mode: "basic"  # "basic" or "joint"
 
