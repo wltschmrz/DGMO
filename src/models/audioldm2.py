@@ -250,14 +250,14 @@ class AudioLDM2(nn.Module):
         return edited_waveform
 
 
-    def edit_audio_with_ddim_inversion_sampling(  # ts[B, 1, T:1024, M:64] -> mel/wav
+    def edit(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
         text: Union[str, List[str]],
-        original_text: Union[str, List[str]],
+        inv_text: Union[str, List[str]],
         duration: float,
         batch_size: int,                            #### <----
-        transfer_strength: float,
+        timestep_level: float,
         guidance_scale: float,
         ddim_steps: int,
         return_type: str = "ts",  # "ts" or "np" or "mel"
@@ -273,7 +273,7 @@ class AudioLDM2(nn.Module):
             init_latent_x = torch.clamp(init_latent_x, min=-10.0, max=10.0)  # clipping
         # ========== DDIM Inversion (noising) ==========
         ori_prompt_embeds, ori_attention_mask, ori_generated_prompt_embeds = self.pipe.encode_prompt(
-            prompt=[original_text]*batch_size, 
+            prompt=[inv_text]*batch_size, 
             device=self.device, 
             do_classifier_free_guidance=True,
             num_waveforms_per_prompt=1,
@@ -294,7 +294,7 @@ class AudioLDM2(nn.Module):
             guidance_scale=guidance_scale,
             num_inference_steps=ddim_steps,
             do_cfg=True,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
         )
         # ========== DDIM Denoising (editing) ==========
         # ddim_denoising # ddim_sampling
@@ -304,7 +304,7 @@ class AudioLDM2(nn.Module):
             attention_mask=attention_mask,
             generated_prompt_embeds=generated_prompt_embeds,
             num_inference_steps=ddim_steps,
-            transfer_strength=transfer_strength,
+            transfer_strength=timestep_level,
             guidance_scale=guidance_scale,
         )
         # ========== latent -> waveform ==========

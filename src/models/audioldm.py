@@ -292,39 +292,24 @@ class AudioLDM(nn.Module):
         return_type: str = "ts",  # "ts" or "np" or "mel"
         clipping = False,
     ):
-        
         assert self.evalmode, "Let mode be eval"
-
-        # ========== 사전 setting ==========
-        # assert get_bit_depth(original_audio_file_path) == 16, \
-        #     f"원본 오디오 {original_audio_file_path}의 bit depth는 16이어야 함"
-
         if duration > self.audio_duration:
             print(f"Warning: 지정한 duration {duration}s가 원본 오디오 길이 {self.audio_duration}s보다 큼")
-            # round_up_duration(audio_file_duration)
-            # print(f"duration을 {duration}s로 조정")
-
-        # # 재현성을 위한 seed 설정
-        # seed_everything(int(seed))
-
         # ========== mel -> latents ==========
         assert mel.dim() == 4, mel.dim()
         init_latent_x = self.encode_audios(mel)
         
         if torch.max(torch.abs(init_latent_x)) > 1e2:
             init_latent_x = torch.clamp(init_latent_x, min=-10.0, max=10.0)  # clipping
-
         # ========== DDIM Inversion (noising) ==========
         prompt_embeds = self.encode_prompt(prompts=text, batch_size=batch_size, do_cfg=True)
         uncond_embeds, cond_embeds = prompt_embeds.chunk(2)
-
         # t_enc step으로 ddim noising
         noisy_latents = self.noising(
             latents=init_latent_x,
             num_inference_steps=ddim_steps,
             transfer_strength=transfer_strength,
         )
-        
         # ========== DDIM Denoising (editing) ==========
         edited_latents = self.denoising(
             latents=noisy_latents,
@@ -333,19 +318,15 @@ class AudioLDM(nn.Module):
             transfer_strength=transfer_strength,
             guidance_scale=guidance_scale,
         )
-
         # ========== latent -> waveform ==========
         # mel spectrogram 복원
         mel_spectrogram = self.decode_latents(edited_latents)
-        
         # mel clipping은 선택
         if clipping:
             mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
-
         if return_type == "mel":
             assert mel_spectrogram.shape[-2:] == (1024,64)
             return mel_spectrogram
-
         # waveform 변환
         edited_waveform = self.mel_to_waveform(mel_spectrogram)
 
@@ -359,39 +340,33 @@ class AudioLDM(nn.Module):
             edited_waveform = edited_waveform.cpu().numpy()
         else:
             assert return_type == "ts"
-        
         return edited_waveform
 
-    def ddim_inv_editing(  # ts[B, 1, T:1024, M:64] -> mel/wav
+    def edit(  # ts[B, 1, T:1024, M:64] -> mel/wav
         self,
         mel: torch.Tensor,
-        original_text: Union[str, List[str]],
+        inv_text: Union[str, List[str]],
         text: Union[str, List[str]],
-        duration: float,
-        batch_size: int,
+        ddim_steps: int,
         timestep_level: float,
         guidance_scale: float,
-        ddim_steps: int,
-        return_type: str = "ts",  # "ts"/"np"/"mel"
-        mel_clipping = False,
+        batch_size: int,
+        duration: float,
     ):
         assert self.evalmode, "Let mode be eval"
         if duration > self.audio_duration:
             print(f"Warning: 지정한 duration {duration}s가 원본 오디오 길이 {self.audio_duration}s보다 큼")
         # ========== mel -> latents ==========
-        assert mel.dim() == 4, mel.dim()
-        assert mel.shape[-2:] == (1024,64), mel.shape
+        assert mel.dim() == 4 and mel.shape[-2:] == (1024,64), (mel.dim(), mel.shape)
         init_latent_x = self.encode_audios(mel)
         if torch.max(torch.abs(init_latent_x)) > 1e2:
             init_latent_x = torch.clamp(init_latent_x, min=-10.0, max=10.0)  # clipping
-        # ========== DDIM Inversion (noising) ==========
-        # print(batch_size)
-        ori_prompt_embeds = self.encode_prompt(prompts=original_text,  batch_size=batch_size, do_cfg=True)
+        # ========== Text Embedding (ori&tar) ==========
+        ori_prompt_embeds = self.encode_prompt(prompts=inv_text,  batch_size=batch_size, do_cfg=True)
         ori_uncond_embeds, ori_cond_embeds = ori_prompt_embeds.chunk(2)
         prompt_embeds = self.encode_prompt(prompts=text,  batch_size=batch_size, do_cfg=True)
         uncond_embeds, cond_embeds = prompt_embeds.chunk(2)
-        # ddim_inversion
-        # print(init_latent_x.shape, ori_uncond_embeds.shape, ori_cond_embeds.shape)
+        # ========== DDIM Inversion (noising) ==========
         noisy_latents = self.ddim_inversion(
             start_latents=init_latent_x,
             final_prompt_embeds=torch.cat([ori_uncond_embeds, ori_cond_embeds]),
@@ -401,7 +376,6 @@ class AudioLDM(nn.Module):
             transfer_strength=timestep_level,
         )
         # ========== DDIM Denoising (editing) ==========
-        # ddim_denoising # ddim_sampling
         edited_latents = self.denoising(
             latents=noisy_latents,
             prompt_embeds=torch.cat([uncond_embeds, cond_embeds]),
@@ -410,26 +384,9 @@ class AudioLDM(nn.Module):
             guidance_scale=guidance_scale,
         )
         # ========== latent -> waveform ==========
-        # mel spectrogram 복원
         mel_spectrogram = self.decode_latents(edited_latents)
-        # mel clipping은 선택
-        if mel_clipping:
-            mel_spectrogram = torch.maximum(torch.minimum(mel_spectrogram, mel), mel)
-        if return_type == "mel":
-            assert mel_spectrogram.shape[-2:] == (1024,64), mel_spectrogram.shape
-            return mel_spectrogram
-        # waveform 변환
-        edited_waveform = self.mel_to_waveform(mel_spectrogram)
-        # duration보다 긴 경우 자르기
-        expected_length = int(duration * self.vocoder.config.sampling_rate)  # 원본 samples 수
-        assert edited_waveform.ndim == 2, edited_waveform.ndim
-        edited_waveform = edited_waveform[:, :expected_length]
-        # type 결정 ("pt"인 경우에는 torch.Tensor 그대로 반환)
-        if return_type == "np":
-            edited_waveform = edited_waveform.cpu().numpy()
-        else:
-            assert return_type == "ts"
-        return edited_waveform
+        assert mel_spectrogram.shape[-2:] == (1024,64), mel_spectrogram.shape
+        return mel_spectrogram
 
 if __name__ == '__main__':
     audioldm = AudioLDM()
@@ -438,71 +395,3 @@ if __name__ == '__main__':
     wav = audioldm.noising(mel)
     print(wav.shape);print(wav.dtype)
 
-"""
-**1 Autoencoder (VAE)**
-
-- `_class_name`: "AutoencoderKL"
-- `in_channels`: 1, `out_channels`: 1
-- `down_block_types`: ["DownEncoderBlock2D"] x 3
-- `up_block_types`: ["UpDecoderBlock2D"] x 3
-- `block_out_channels`: [128, 256, 512]
-- `latent_channels`: 8
-- `sample_size`: 512
-- `scaling_factor`: 0.9228
-- `force_upcast`: True  # 강제 업캐스트 (연산 안정성 증가)
-- `use_quant_conv`: True  # Quantization을 위한 Conv 사용
-- `use_post_quant_conv`: True  # Post-Quantization Conv 사용
-- `mid_block_add_attention`: True  # 중간 블록에서 Attention 사용
-
-**2 Text Encoder (CLAP)**
-
-- `_class_name`: "ClapTextModelWithProjection"
-- `hidden_size`: 768, `num_hidden_layers`: 12
-- `num_attention_heads`: 12, `projection_dim`: 512
-- `vocab_size`: 50265
-- `hidden_act`: "gelu"
-- `layer_norm_eps`: 1e-12  # LayerNorm epsilon
-- `max_position_embeddings`: 514  # 최대 토큰 길이
-
-**3 UNet**
-
-- `_class_name`: "UNet2DConditionModel"
-- `sample_size`: 128, `in_channels`: 8, `out_channels`: 8
-- `down_block_types`: ["DownBlock2D", "CrossAttnDownBlock2D"] x 3
-- `up_block_types`: ["CrossAttnUpBlock2D"] x 3 + ["UpBlock2D"]
-- `block_out_channels`: [128, 256, 384, 640]
-- `attention_head_dim`: 8, `cross_attention_dim`: [128, 256, 384, 640]
-- `time_embedding_type`: "positional"  # 타임스텝 임베딩 방식
-- `conv_in_kernel`: 3, `conv_out_kernel`: 3  # 컨볼루션 커널 크기
-- `resnet_out_scale_factor`: 1.0  # ResNet 출력 스케일 팩터
-- `projection_class_embeddings_input_dim`: 512  # Class 임베딩 차원
-
-**4 Vocoder (SpeechT5HifiGan)**
-
-- `_class_name`: "SpeechT5HifiGanConfig"
-- `model_type`: "hifigan", `model_in_dim`: 64
-- `sampling_rate`: 16000, `torch_dtype`: "float32"
-- `upsample_rates`: [5, 4, 2, 2, 2] → 총 160배 업샘플링
-- `upsample_kernel_sizes`: [16, 16, 8, 4, 4]  # 업샘플링 커널 크기
-- `upsample_initial_channel`: 1024  # 첫 번째 업샘플링 계층의 채널 수
-- `resblock_kernel_sizes`: [3, 7, 11], `resblock_dilation_sizes`: [[1,3,5]] x 3
-- `normalize_before`: False  # 입력 Mel-Spectrogram 정규화 없음
-- `leaky_relu_slope`: 0.1  # Leaky ReLU 활성화 함수
-
-**5 DDIM Scheduler**
-
-- `_class_name`: "DDIMScheduler"
-- `num_train_timesteps`: 1000
-- `beta_start`: 0.0015, `beta_end`: 0.0195
-- `beta_schedule`: "scaled_linear"
-- `prediction_type`: "epsilon"
-- `clip_sample`: False, `thresholding`: False
-- `set_alpha_to_one`: False  # 알파 값을 1로 고정하지 않음
-- `steps_offset`: 1  # DDIM 샘플링 시 오프셋
-- `dynamic_thresholding_ratio`: 0.995  # 동적 Thresholding 비율
-- `clip_sample_range`: 1.0  # 샘플 클리핑 범위
-- `sample_max_value`: 1.0  # 샘플 최대 값
-- `timestep_spacing`: "leading"  # 타임스텝 간격
-- `rescale_betas_zero_snr`: False  # SNR=0에서 베타 값 재조정 없음
-- `_diffusers_version`: "0.15.0.dev0"  # 사용된 diffusers 버전
-"""

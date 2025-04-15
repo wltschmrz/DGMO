@@ -9,16 +9,28 @@
 # AudioLDM data preprocessing config
 ldm_config_path: "./configs/audioldm.yaml"
 
-learning_rate: 0.005
+# learning_rate: 0.005
 
-ddim_batch: 2
-num_splits: 1
+# ddim_batch: 2
+# num_splits: 1
 
-iteration: 3
+# iteration: 3
+# epochs: 300
+# noise_level: 0.6
+# ddim_steps: 25
+# guidance_scale: 2.5
+
+# masking_mode: "basic"  # "basic" or "joint"
+
+learning_rate: 0.001
+
+ddim_batch: 4
+num_splits: 1  # 몇번 쪼개서 할건지
+
+iteration: 1
 epochs: 300
-noise_level: 0.6
+noise_level: 0.7
 ddim_steps: 25
-guidance_scale: 2.5
+guidance_scale: 7
 
 masking_mode: "basic"  # "basic" or "joint"
-

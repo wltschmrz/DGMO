@@ -6,6 +6,7 @@ test/*
 *.zip
 *.png
 *.log
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -181,6 +182,5 @@ cython_debug/
 
 !data
 !data/samples
-!data/samples/A_cat_meowing.wav
-!data/samples/Cat_n_Footstep.wav
-!data/samples/Foot_steps_on_the_wooden_floor.wav
+!data/samples/*.wav
+

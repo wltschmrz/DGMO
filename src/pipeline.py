@@ -5,12 +5,15 @@ import os
 import sys
 proj_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src_dir = os.path.join(proj_dir, 'src')
-sys.path.extend([proj_dir, src_dir])
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from src.models import AudioLDM, AudioLDM2, Auffusion, Mask, Multi_Class_Mask
+import numpy as np
+# from src.models import AudioLDM, AudioLDM2, Auffusion, 
+from src.models import Mask, Multi_Class_Mask
 from src.utils import load_config, save_wav_file, AudioDataProcessor
+from tango import Tango
 
 class DGMO(nn.Module):
     def __init__(self, *, config_path="./configs/DGMO.yaml", device="cuda", **kwargs):
@@ -28,21 +31,30 @@ class DGMO(nn.Module):
             if key == "repo_id":
                 setattr(self, key, value)
 
-        repo_type = self.get_model_type(self.repo_id)
-        match repo_type:
-            case "audioldm":
-                self.ldm = AudioLDM(ckpt=self.repo_id, device=self.device, **kwargs)
-            case "audioldm2":
-                self.ldm = AudioLDM2(ckpt=self.repo_id, device=self.device, **kwargs)
-            case "auffusion":
-                self.ldm = Auffusion(ckpt=self.repo_id, device=self.device, **kwargs)
-            case _:
-                raise ValueError(f"Invalid repo_id: {self.repo_id}")
+        # repo_type = self.get_model_type(self.repo_id)
+        # match repo_type:
+        #     case "audioldm":
+        #         self.ldm = AudioLDM(ckpt=self.repo_id, device=self.device, **kwargs)
+        #     case "audioldm2":
+        #         self.ldm = AudioLDM2(ckpt=self.repo_id, device=self.device, **kwargs)
+        #     case "auffusion":
+        #         self.ldm = Auffusion(ckpt=self.repo_id, device=self.device, **kwargs)
+        #     case _:
+        #         raise ValueError(f"Invalid repo_id: {self.repo_id}")
+
+        self.ldm = Tango("declare-lab/tango", device=device)  # 2-full
             
         self.processor = AudioDataProcessor(config_path=self.ldm_config_path, device=self.device, **kwargs)
 
-        self.ldm.eval()
-        for param in self.ldm.parameters():
+        # self.ldm.eval()  ##
+        # for param in self.ldm.parameters():
+        #     param.requires_grad = False  # 모든 가중치가 학습되지 않음
+
+        for param in self.ldm.vae.parameters():
+            param.requires_grad = False  # 모든 가중치가 학습되지 않음
+        for param in self.ldm.stft.parameters():
+            param.requires_grad = False  # 모든 가중치가 학습되지 않음
+        for param in self.ldm.model.parameters():
             param.requires_grad = False  # 모든 가중치가 학습되지 않음
 
     def _apply_config(self, config):
@@ -94,18 +106,29 @@ class DGMO(nn.Module):
             # ----- Reference Generation ----- #
             mel_sample_list=[]
             for _ in range(self.num_splits):
-                ref_mels = self.ldm.ddim_inv_editing(
+                ref_mels = self.ldm.edit(
                     mel=vae_inputs,
-                    original_text="",
-                    text=text,
-                    duration=self.processor.duration,
-                    batch_size=chunks,
+                    inv_text=[""],
+                    text=[text],
+                    ddim_steps=self.ddim_steps,
                     timestep_level=self.noise_level,
                     guidance_scale=self.guidance_scale,
-                    ddim_steps=self.ddim_steps,
-                    return_type="mel",  # "ts"/"np"/"mel"
-                    mel_clipping = False,
+                    batch_size=chunks,
+                    duration=10.24,
                 )
+                
+                # ref_mels = self.ldm.ddim_inv_editing(
+                #     mel=vae_inputs,
+                #     original_text="",
+                #     text=text,
+                #     duration=self.processor.duration,
+                #     batch_size=chunks,
+                #     timestep_level=self.noise_level,
+                #     guidance_scale=self.guidance_scale,
+                #     ddim_steps=self.ddim_steps,
+                #     return_type="mel",  # "ts"/"np"/"mel"
+                #     mel_clipping = False,
+                # )
                 mel_sample_list.append(ref_mels)
 
             ref_mels = torch.cat(mel_sample_list, dim=0)
@@ -116,7 +139,7 @@ class DGMO(nn.Module):
             loss_values = []
             for epoch in range(self.epochs):
                 optimizer.zero_grad()
-                masked_stft = (mix_stft_mag - mix_stft_mag.min()) * mask() + mix_stft_mag.min()  #ts[1,513,1024]
+                masked_stft = mix_stft_mag * mask()  #ts[1,513,1024]
                 masked_mel = self.processor.stft_to_mel(masked_stft)  # [1,M,T]
                 msked_vae_mel = self.processor.preprocess_spec(masked_mel)  # [1,1,T*,M*]
                 msked_vae_mels = msked_vae_mel.repeat(self.ddim_batch, 1, 1, 1)
@@ -129,14 +152,30 @@ class DGMO(nn.Module):
             with torch.no_grad():
                 final_mask = mask().detach().clone()
                 if thresholding:
-                    threshold = 0.8
+                    threshold = 0.9
                     final_mask[final_mask >= threshold] = 1.0
-                cur_stft_mag = (mix_stft_mag - mix_stft_mag.min()) * final_mask + mix_stft_mag.min()  #ts[1,513,1024]
+                cur_stft_mag = mix_stft_mag * final_mask  #ts[1,513,1024]
                 
         msked_wav = self.processor.inverse_stft(cur_stft_mag, mix_stft_complex)
-        save_path = os.path.join(save_dir, save_fname)
-        save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
-        return msked_wav  # np[1,N]
+        # save_path = os.path.join(save_dir, save_fname)
+        # # save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
+        # ref_wav = self.ldm.vae.decode_to_waveform(ref_mels)  ####
+        # print(ref_wav.shape)
+        # ref_wav = ref_wav.mean(axis=0)
+        # print(ref_wav.shape)
+        # # try:
+        # ref_wav = np.expand_dims(ref_wav, axis=0)
+        # # except: pass
+        # print(ref_wav.shape)
+        # # ref_wav = self.processor.prepare_wav(ref_wav)
+        # # print(ref_wav.shape)
+        # ref_wav = ref_wav.astype(np.float32)  # float64 → float32
+        # ref_wav = ref_wav / 32768.0
+        # save_path = os.path.join(save_dir, save_fname)
+        # save_path_ref = os.path.join(save_dir, "ref.wav")
+        # save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
+        # save_wav_file(filename=save_path_ref, wav_np=ref_wav, target_sr=self.processor.sampling_rate)
+        return msked_wav, ref_mels.mean(dim=0)  # np[1,N]  ####
 
     def joint_opt_inference(
             self, 

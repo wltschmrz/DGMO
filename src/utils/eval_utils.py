@@ -101,6 +101,7 @@ def plot_wav_mel(
     hop_length = 512       # Hop length 설정
 
     for i, wav in enumerate(wav_arrays):
+        
         if i==0:
             name = "Mix"
         elif i == 1:
@@ -109,19 +110,27 @@ def plot_wav_mel(
             name = "Ref"
         if len(wav.shape) > 1:
             wav = wav.squeeze()
+
+        if not np.issubdtype(wav.dtype, np.floating):
+            wav = wav.astype(np.float32) / np.iinfo(wav.dtype).max
+
         duration = len(wav) / sr
         if duration > clip_duration:
             wav = wav[: int(clip_duration * sr)]  # 앞 10.24초만 유지
+        
         time = np.linspace(0, len(wav) / sr, num=len(wav))
-
         axes[0, i].plot(time, wav, lw=0.5)
+        
         axes[0, i].set_title(f"{name} Waveform")
         axes[0, i].set_xlabel("Time (s)")
         axes[0, i].set_ylabel("Amplitude")
-        axes[0, i].set_ylim([-0.5, 0.5])
-
+        axes[0, i].set_ylim([-1, 1])
+        
         mel_spec = librosa.feature.melspectrogram(y=wav, sr=sr, n_mels=128, hop_length=hop_length)
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+
+        mel_spec_db = np.squeeze(mel_spec_db)
+        assert mel_spec_db.ndim == 2, f"mel_spec_db must be 2D, got shape {mel_spec_db.shape}"
 
         ld.specshow(
             mel_spec_db,
