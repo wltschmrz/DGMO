@@ -5,7 +5,7 @@ einops
 accelerate
 scikit-image
 opencv-contrib-python
-rp
+# rp
 torchaudio
 librosa
 
