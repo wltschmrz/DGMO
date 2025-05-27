@@ -36,13 +36,7 @@ Unlike traditional LASS approaches, DGMO requires no training and generalizes ac
 
 <!-- To be updated -->
 
-## Training
-
-<!-- To be updated -->
-
-## Evaluation
-
-<!-- To be updated -->
+## Inference
 
 ## Acknowledgement
 
