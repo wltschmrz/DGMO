@@ -9,7 +9,7 @@
 
 [[Paper]](https://arxiv.org/abs/xxxx.xxxxx) [[Project Page]](https://wltschmrz.github.io/DGMO/)
 
-by Geonyoung Lee\*, [Geonhee Han](https://chaksseu.github.io/)\*, [Paul Hongsuck Seo](https://phseo.github.io/)  
+by [Geonyoung Lee](https://wltschmrz.github.io/)\*, [Geonhee Han](https://chaksseu.github.io/)\*, [Paul Hongsuck Seo](https://phseo.github.io/)  
 \*Equal contribution
 
 This is the official repository for our Interspeech 2025 paper:  
