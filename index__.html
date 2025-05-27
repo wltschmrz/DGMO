@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.66.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization</title>
+  <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+  
+  <!-- Bootstrap & Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,600">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" crossorigin="anonymous">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="../css/normalize.css">
+  <link rel="stylesheet" href="../css/skeleton.css">
+  <link rel="stylesheet" href="../css/custom.css">
+  
+  <style>
+    body { font-size: 20px; }
+    h1 { font-size: 30px; color: black; }
+    .table-container { overflow-x: auto; width: 100%; }
+    .divider { border-top: 2px solid #ccc; margin: 20px 0; }
+    .audio-container { display: flex; justify-content: center; align-items: center; border: none; }
+    td { text-align: justify; color: black; font-family: Georgia; }
+    video { width: 640px; height: 360px; }
+    @media (max-width: 600px) {
+      body { font-size: 14px; }
+      h1 { font-size: 22px; }
+      h2 { font-size: 18px; }
+      video { width: 400px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header></header>
+    <main>
+      <article>
+        <h1 class="text-center" style="font-size:50px;">DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization</h1>
+        <p class="text-center" style="color: #0056b3;">
+          <a href="https://liuxubo717.github.io/">Geonyoung Lee</a>,
+          <a href="https://qiuqiangkong.github.io/">Geonhee Han</a>,
+          <a href="https://cliffzhao.github.io">Paul Hongsuck Seo</a>
+        </p>
+        
+        <div class="text-center my-3">
+          <a href="DGMO.pdf" class="btn btn-dark">Paper</a>
+          <a href="https://github.com/wltschmrz/DGMO-Separation" class="btn btn-dark">Code</a>
+        </div>
+
+        <section>
+          <h1 class="text-center">Abstract</h1>
+          <p class="text-justify">
+            Language-Queried Audio Source Separation (LASS) enables open-vocabulary sound separation by conditioning on natural language descriptions. While existing LASS methods rely on task-specific training, we explore whether pretrained diffusion models, originally designed for audio generation, can inherently perform separation without additional training.
+In this study, we introduce a training-free framework that leverages generative priors for zero-shot LASS. We examine naïve adaptations of diffusion models to LASS and identify key limitations arising from modality-specific challenges. To address these issues, we propose Diffusion-Guided Mask Optimization (DGMO), a test-time optimization framework that refines spectrogram masks for precise, input-aligned separation.
+Our approach demonstrates that pretrained diffusion models can be effectively repurposed for source separation, achieving competitive performance without task-specific supervision. This work expands the application of diffusion models beyond generation, establishing a new paradigm for zero-shot audio separation.
+          </p>
+        </section>
+        
+        <section>
+          <h1 class="text-center">Diffusion-Guided Mask Optimization</h1>
+          <p class="text-justify">We introduce a novel training-free LASS framework based on diffusion models, which overcomes the limitations of previous approaches by integrating both mask optimization and generative refinement into a unified process. The proposed framework operates in two stages: reference generation and mask optimization.</p>
+          <figure class="text-center">
+            <img src="DGMO" width="100%" alt="DGMO Framework">
+            <figcaption>Figure 1: Framework of DGMO</figcaption>
+          </figure>
+        </section>
+
+        <section>
+          <h1>Separated Examples</h1>
+          <div class="table-container">
+            <table class="table text-center">
+              <thead>
+                <tr>
+                  <th>Text Query</th>
+                  <th>Mixture</th>
+                  <th>Separated Audio</th>
+                  <th>Ground Truth</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>"Dog barking"</td>
+                  <td><img src="demos_plots/exp122_accordion_mixture.png" width="250"></td>
+                  <td><img src="demos_plots/exp122_accordion_output.png" width="250"></td>
+                  <td><img src="demos_plots/exp122_accordion_target.png" width="250"></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td><audio controls><source src="demos/exp122_accordion_mixture.wav"></audio></td>
+                  <td><audio controls><source src="demos/exp122_accordion_output.wav"></audio></td>
+                  <td><audio controls><source src="demos/exp122_accordion_target.wav"></audio></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        
+        <hr>
+        <p class="text-center">Page updated on 1 March 2025</p>
+      </article>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+</body>
+</html>

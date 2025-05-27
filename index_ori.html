@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Hugo 0.66.0" />
+  <!-- <meta name="viewport" content="width=device-width, initial-scale=1"> -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 引入Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
+
+  <!-- 引入jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- 引入Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,600" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
+  <link rel="stylesheet" href="../css/normalize.css">
+  <link rel="stylesheet" href="../css/skeleton.css">
+  <link rel="stylesheet" href="../css/custom.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <link rel="alternate" href="index.xml" type="application/rss+xml" title="Speech Research">
+  <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
+  <style>
+    body {
+      font-size: 20px; /* 设置默认字体大小 */
+
+    }
+    h1{ font-size:30px; 
+      color:black"
+
+    }
+    thead{
+      border-top: 1px solid #ccc; 
+    }
+    .table td{
+      border: none
+    }
+    .no-border {
+    border: none;
+  }
+
+  th{
+    font-weight: lighter;
+  }
+
+    .table-container {
+      overflow-x: auto;
+      /* width:120%; */
+      width: 100%;
+      /* margin: 20px; */
+    }
+
+    .table-container2 {
+    table-layout: fixed;
+    word-break: break-word;
+    width: 90%; /* 适当调整宽度 */
+    margin: 0 auto; /* 居中对齐 */
+    }
+
+    .divider {
+    border-top: 2px solid #ccc; /* 灰色边框 */
+    margin: 20px 0; /* 适当调整上下边距 */
+  }
+
+    .audio-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: none
+    }
+
+    td{
+      text-align: justify; 
+      color:black;
+      font-family: georgian;
+    }
+
+    font{ text-align: justify; 
+      color:black;
+      font-family: georgian;
+
+    }
+
+      video {
+      width: 640px; /* 设置视频宽度 */
+      height: 360px; /* 设置视频高度 */
+    }
+    @media(min-width:1200px){
+      .table-container {
+      overflow-x: auto;
+      width:100%;
+      margin: 0 auto;
+
+    }
+    }
+    @media (max-width: 600px) {
+      /* 在手机屏幕上应用以下样式 */
+      body {
+        font-size: 14px; /* 缩小字体大小 */
+      }
+      h1 {
+        font-size: 22px; /* 缩小标题字体大小 */
+      }
+      h2 {
+        font-size: 18px; /* 缩小标题字体大小 */
+      }
+      nav ul li {
+        display: block; /* 列表项显示为块级元素，方便手机点击 */
+      }
+      .video-container {
+        padding-bottom: 75%; /* 4:3宽高比，调整此值适配其他比例的视频 */
+      }
+      video {
+      width: 400px; /* 设置视频宽度 */
+      /* height: 360px; 设置视频高度 */
+      }
+    }
+  </style>
+  <title >DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization</title>
+</head>
+
+<body rightmargin="150" leftmargin="150" topmargin="100" bottommargin="100" line-height:160%>
+  <!-- <font size="5"> -->
+
+    <div class="container">
+
+      <header role="banner">
+
+      </header>
+      <main role="main">
+        <article itemscope itemtype="https://schema.org/BlogPosting">
+          <br></br>
+          <h1 itemprop="headline" align="center">
+            <font style="font-size:50px; color:black;">DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization
+            </font>
+          </h1>
+          <br></br>
+          <p style="line-height:1" align="center"><b>
+              <font style="color: #0056b3;">
+                <a href="https://liuxubo717.github.io/">Geonyoung Lee</a><sup>1</sup>,
+                <a href="https://~~.github.io/">Geonhee Han</a><sup>1</sup>,
+                <a href="https://~~.github.io">Paul Hongsuck Seo</a><sup>1</sup>
+              </font>
+            </b></p>
+          <p style="line-height:0.6" align="center">
+            <font color="061E61"><sup>1</sup>Korea University</font>
+          </p>
+
+          <br>
+          <table align=center width=500px>
+          <center>
+                  <span class="link-block">
+                    <a href="DGMO_arXiv.pdf"
+                       class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon" style="color: black;">
+                          <i class="fa fa-file-text" aria-hidden="true"></i>
+                      </span>
+                      <span style="font-size:22px; color: black; font-family: georgian;"><b>Paper</b></span>
+                    </a>
+            
+    
+                  </span>
+            &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+    
+    
+            &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;
+                  <!-- Code Link. -->
+                  <span class="link-block">
+                    <a href="https://github.com/wltschmrz/DGMO"
+                       class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon" style="color: black;">
+                          <i class="fab fa-github"></i>
+                      </span>
+                      <span style="font-size:22px; color: black; font-family: georgian;"><b>Code</b></span>
+                      </a>
+                  </span>
+            </center>			  
+             </tr>
+          </table>
+
+          <br>
+          <br>
+
+
+          <section itemprop="entry-text">
+
+            <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+  
+                  <th>
+                    <h2 id="abstract">
+                      <center>
+                        <h1>Abstract</h1>
+                      </center>
+                    </h2>
+                    <p style="text-align: justify; color:black;font-family: georgian;">
+                      <font> 
+                        Language-Queried Audio Source Separation (LASS) enables open-vocabulary sound separation by conditioning on natural language descriptions. While existing LASS methods rely on task-specific training, we explore whether pretrained diffusion models, originally designed for audio generation, can inherently perform separation without additional training.
+                        In this study, we introduce a training-free framework that leverages generative priors for zero-shot LASS. We examine naïve adaptations of diffusion models to LASS and identify key limitations arising from modality-specific challenges. To address these issues, we propose Diffusion-Guided Mask Optimization (DGMO), a test-time optimization framework that refines spectrogram masks for precise, input-aligned separation.
+                        Our approach demonstrates that pretrained diffusion models can be effectively repurposed for source separation, achieving competitive performance without task-specific supervision. This work expands the application of diffusion models beyond generation, establishing a new paradigm for zero-shot audio separation.
+                      </font>
+                    </p>
+                    </th>
+
+            </table>
+
+            <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+              <th style="border: None;">
+                <h2 id="graph">
+                  <center>
+                  <h1>Diffusion-Guided Mask Optimization</h1>
+                </center>
+              </h2>
+              <p style="text-align: justify; color:black;font-family: georgian;">
+                <font> 
+                  We introduce a novel training-free LASS framework based on diffusion models, which overcomes the limitations of previous approaches by integrating both mask optimization and generative refinement into a unified process. The proposed framework operates in two stages: reference generation and mask optimization.                <!-- </strong> -->
+                </font>
+              </p>
+              <figure>
+                <p align="center"><img src="DGMO.png" width="100%" class="center" /></p>
+                <figcaption>
+                  
+                  <p style="text-align: justify;">
+                    <center>
+                    <font color="061E61"><b>Figure 1:</b> Framework of DGMO.
+                    </center>
+                  </p>
+                </figcaption>
+              </figure>
+            </th>
+          </table>
+            
+            
+  
+            
+
+            <br></br>
+            <h2 id="section_1">
+              <h1 style="color: black;">Separation Results</h1>
+            </h2>
+            <div class = "table-container">
+              <table class="table" align="center" style="table-layout: fixed; word-break: break-word; width: 100%;">
+                <thead>
+                  <tr>
+                    <th scope="col" width="160px">
+                      <center>
+                      <font color="061E61">Text Query</font>
+                    </center>
+                    </th>
+                    <th scope="col" width="250px">
+                      <center>
+                      <font color="061E61">Mixture</font>
+                    </center>
+                    </th>
+                    <th scope="col" width="250px">
+                      <center>
+                      <font color="061E61">Separated Audio</font>
+                    </center>
+                    </th>
+                    <th scope="col" width="250px">
+                      <center>
+                      <font color="061E61">Ground Truth</font>
+                    </center>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        <center>
+                          "The dog barking"
+                        </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp122_accordion_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp122_accordion_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp122_accordion_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                    <td></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp122_accordion_mixture.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center>
+                    </td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp122_accordion_output.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp122_accordion_target.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; vertical-align: middle;">
+                      "acoustic guitar"
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1159_acoustic guitar_mixture.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1159_acoustic guitar_output.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1159_acoustic guitar_target.png" width="250"/>
+                     </center>
+                  </td>
+               </tr>
+                <td></td>
+                    <!-- <td>acoustic guitar</th> -->
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1159_acoustic guitar_mixture.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1159_acoustic guitar_output.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1159_acoustic guitar_target.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; vertical-align: middle;">
+                      "cello"
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1758_cello_mixture.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1758_cello_output.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp1758_cello_target.png" width="250"/>
+                     </center>
+                  </td>
+               </tr>
+                <td></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1758_cello_mixture.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1758_cello_output.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp1758_cello_target.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center; vertical-align: middle;">
+                      "erhu"
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp2066_erhu_mixture.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp2066_erhu_output.png" width="250"/>
+                     </center>
+                  </td>
+                  <td>
+                     <center>
+                        <img alt="fname" height="125" src="demos_plots/exp2066_erhu_target.png" width="250"/>
+                     </center>
+                  </td>
+               </tr>
+                <td></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp2066_erhu_mixture.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp2066_erhu_output.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                      <td><center><audio controls="controls">
+                        <source
+                          src="demos/exp2066_erhu_target.wav"
+                          autoplay />Your browser does not support the audio element.
+                      </audio>
+                    </center></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div id="accordion">
+                <div class="card">
+                  <div class="card-header" id="headingOne">
+                    <h5 class="mb-0">
+                      <button class="btn btn-link" data-toggle="collapse" data-target="#collapseThree" aria-expanded="true" aria-controls="collapseThree">
+                        &#x1F449; Click for more examples.
+                      </button>
+                    </h5>
+                  </div>
+              
+                  <div id="collapseThree" class="collapse" aria-labelledby="headingOne" data-parent="#accordion">
+                    <div class="card-body">
+                      <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+                        <thead>
+                          <tr>
+                            <th scope="col" width="160px">
+                              <center>
+                              <font color="061E61">Text Query</font>
+                            </center>
+                            </th>
+                            <th scope="col" width="250px">
+                              <center>
+                              <font color="061E61">Mixture</font>
+                            </center>
+                            </th>
+                            <th scope="col" width="250px">
+                              <center>
+                              <font color="061E61">Separated Audio</font>
+                            </center>
+                            </th>
+                            <th scope="col" width="250px">
+                              <center>
+                              <font color="061E61">Ground Truth</font>
+                            </center>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle;">
+                              "flute"
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2340_flute_mixture.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2340_flute_output.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2340_flute_target.png" width="250"/>
+                             </center>
+                          </td>
+                       </tr>
+                        <td></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2340_flute_mixture.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2340_flute_output.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2340_flute_target.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                          </tr>
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle;">
+                              "saxophone"
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2448_saxophone_mixture.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2448_saxophone_outputwav.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2448_saxophone_target.png" width="250"/>
+                             </center>
+                          </td>
+                       </tr>
+                        <td></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2448_saxophone_mixture.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2448_saxophone_output.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2448_saxophone_target.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                          </tr>
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle;">
+                              "trumpet"
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2848_trumpet_mixture.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2848_trumpet_output.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp2848_trumpet_target.png" width="250"/>
+                             </center>
+                          </td>
+                       </tr>
+                        <td></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2848_trumpet_mixture.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2848_trumpet_output.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp2848_trumpet_target.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                          </tr>
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle;">
+                              "violin"
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3431_violin_mixture.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3431_violin_output.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3431_violin_target.png" width="250"/>
+                             </center>
+                          </td>
+                       </tr>
+                        <td></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3431_violin_mixture.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3431_violin_output.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3431_violin_target.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                          </tr>
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle;">
+                              "tuba"
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3184_tuba_mixture.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3184_tuba_output.png" width="250"/>
+                             </center>
+                          </td>
+                          <td>
+                             <center>
+                                <img alt="fname" height="125" src="demos_plots/exp3184_tuba_target.png" width="250"/>
+                             </center>
+                          </td>
+                       </tr>
+                        <td></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3184_tuba_mixture.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3184_tuba_output.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                              <td><center><audio controls="controls">
+                                <source
+                                  src="demos/exp3184_tuba_target.wav"
+                                  autoplay />Your browser does not support the audio element.
+                              </audio><center></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+
+
+
+              <br></br>
+              <h2 id="section_2">
+                <h1 style="color: black;">Audio Event Separation</h1>
+              </h2>
+              <!-- <p>
+                <i>Text prompts are generated by the ChatGPT. Audio files are generated by AudioLDM 2-Full.</i>
+              </p> -->
+              <div class = "table-container">
+                <table class="table" align="center" style="table-layout: fixed; word-break: break-word; width: 100%;">
+                  <thead>
+                    <tr>
+                      <th scope="col" width="160px">
+                        <center>
+                        <font color="061E61">Text Query</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Mixture</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Separated Audio</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Ground Truth</font>
+                      </center>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        "water drops"
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp31_water drops_mixture.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp31_water drops_output.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp31_water drops_target.png" width="250"/>
+                       </center>
+                    </td>
+                 </tr>
+                  <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp31_water drops_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp31_water drops_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp31_water drops_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        "keyboard typing"
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp302_keyboard typing_mixture.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp302_keyboard typing_output.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp302_keyboard typing_target.png" width="250"/>
+                       </center>
+                    </td>
+                 </tr>
+                  <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp302_keyboard typing_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp302_keyboard typing_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp302_keyboard typing_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        "laughing"
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp466_laughing_mixture.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp466_laughing_output.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp466_laughing_target.png" width="250"/>
+                       </center>
+                    </td>
+                 </tr>
+                  <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp466_laughing_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp466_laughing_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp466_laughing_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        "cat"
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp748_cat_mixture.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp748_cat_output.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp748_cat_target.png" width="250"/>
+                       </center>
+                    </td>
+                 </tr>
+                  <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp748_cat_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp748_cat_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp748_cat_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <td style="text-align: center; vertical-align: middle;">
+                        "door wood knock"
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp1969_door wood knock_mixture.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp1969_door wood knock_output.png" width="250"/>
+                       </center>
+                    </td>
+                    <td>
+                       <center>
+                          <img alt="fname" height="125" src="demos_plots/exp1969_door wood knock_target.png" width="250"/>
+                       </center>
+                    </td>
+                 </tr>
+                  <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1969_door wood knock_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1969_door wood knock_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1969_door wood knock_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+              </div>
+
+              <br></br>
+              <h2 id="section_3">
+                <h1 style="color: black;">Audio Event Separation (w. AudioCaps caption)</h1>
+              </h2>
+              <div class = "table-container">
+                <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+                  <thead>
+                    <tr>
+                      <th scope="col" width="260px">
+                        <center>
+                        <font color="061E61">Text Query</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Mixture</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Separated Audio</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Ground Truth</font>
+                      </center>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs."
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                      <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1_A rocket flies by followed by a loud explosion and fire crackling as a truck engine runs idle_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "A series of burping."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp367_A series of burping and farting_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp367_A series of burping and farting_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp367_A series of burping and farting_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                      
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp367_A series of burping and farting_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp367_A series of burping and farting_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp367_A series of burping and farting_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "A ticktock sound playing at the same rhythm with piano."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp996_A ticktock sound playing at the same rhythm with piano notes_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp996_A ticktock sound playing at the same rhythm with piano notes_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp996_A ticktock sound playing at the same rhythm with piano notes_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp996_A ticktock sound playing at the same rhythm with piano notes_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp996_A ticktock sound playing at the same rhythm with piano notes_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp996_A ticktock sound playing at the same rhythm with piano notes_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "A man speaks then a small bird chirps."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1338_A man speaks then a small bird chirps_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1338_A man speaks then a small bird chirps_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1338_A man speaks then a small bird chirps_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1338_A man speaks then a small bird chirps_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1338_A man speaks then a small bird chirps_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1338_A man speaks then a small bird chirps_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_mixture.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_output.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="demos_plots/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_target.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_mixture.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_output.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="demos/exp1718_Footsteps and scuffing occur, after which a door grinds, squeaks and clicks, an adult male speaks, and the door grinds, squeaks and clicks shut with a thump_target.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+              </div>
+
+              <br></br>
+              <h2 id="section_3">
+                <h1 style="color: black;">Separation on Real Audio(w. FreeSound)</h1>
+              </h2>
+              <div class = "table-container">
+                <table class="table" align="center" style="table-layout: fixed;word-break:break-word">
+                  <thead>
+                    <tr>
+                      <th scope="col" width="260px">
+                        <center>
+                        <font color="061E61">Text Query</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Mixture</font>
+                      </center>
+                      </th>
+                      <th scope="col" width="250px">
+                        <center>
+                        <font color="061E61">Separated Audio</font>
+                      </center>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "The bell is ringing and emitting faint echoes."
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/683332_8872754-hq_16k.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/8.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                      <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/683332_8872754-hq_16k.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/8.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "The fire crackles in the wind, creating a rhythmic and soothing sound."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/688994_13721094-hq_16k.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/30.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                      
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/688994_13721094-hq_16k.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/30.wav"  
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "Something is falling to the ground and making a clank."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/695550_1648170-hq_16k.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/60.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/695550_1648170-hq_16k.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/60.wav"  
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                    </tr>
+                    <tr>
+                      <tr>
+                        <td style="text-align: center; vertical-align: middle;">
+                          "In the forest, the birds are chirping incessantly."</dh>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/706817_1648170-hq_16k.png" width="250"/>
+                         </center>
+                      </td>
+                      <td>
+                         <center>
+                            <img alt="fname" height="125" src="extra_demo_pngs/103.png" width="250"/>
+                         </center>
+                      </td>
+                   </tr>
+                   <td></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/706817_1648170-hq_16k.wav"
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+                        <td><center><audio controls="controls">
+                          <source
+                            src="extra_demos/103.wav"   
+                            autoplay />Your browser does not support the audio element.
+                        </audio><center></td>
+
+                    </tr>
+                    
+                  </tbody>
+                </table>
+                
+              </div>
+
+              <p style="text-align: justify; color:black;font-family: georgian;">
+                <font> 
+              Page updated on 1 March 2025
+            </font></p>
+              <br></br>
+          </section>
+        </article>
+      </main>
+
+    </div>
+
+    <script>
+      (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+          (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+          m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+      })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+      ga('create', 'UA-139981676-1', 'auto');
+      ga('send', 'pageview');
+    </script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+
+
+    <script type="text/x-mathjax-config">
+     MathJax.Hub.Config({
+         HTML: ["input/TeX","output/HTML-CSS"],
+         TeX: {
+                Macros: {
+                         bm: ["\\boldsymbol{#1}", 1],
+                         argmax: ["\\mathop{\\rm arg\\,max}\\limits"],
+                         argmin: ["\\mathop{\\rm arg\\,min}\\limits"]},
+                extensions: ["AMSmath.js","AMSsymbols.js"],
+                equationNumbers: { autoNumber: "AMS" } },
+         extensions: ["tex2jax.js"],
+         jax: ["input/TeX","output/HTML-CSS"],
+         tex2jax: { inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                    displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+                    processEscapes: true },
+         "HTML-CSS": { availableFonts: ["TeX"],
+                       linebreaks: { automatic: true } }
+     });
+ </script>
+
+    <script type="text/x-mathjax-config">
+     MathJax.Hub.Config({
+       tex2jax: {
+         skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+       }
+     });
+ </script>
+
+    <script type="text/javascript" async
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML">
+      </script>
+      <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+
+</html>
