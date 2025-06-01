@@ -21,7 +21,7 @@ We propose a novel *training-free* framework that enables **zero-shot language-q
 
 ## Overview
 
-![DGMO Diagram](assets/dgmo_0522_compressed.png)
+![DGMO Diagram](assets/figures/dgmo_0601.png)
 
 DGMO consists of two key modules:
 
