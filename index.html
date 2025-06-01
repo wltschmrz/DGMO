@@ -107,16 +107,13 @@
     <section id="abstract" class="mb-5">
       <h2 style="font-weight: bold;" class="text-center">Abstract</h2>
       <p style="width: 75%; margin: 0 auto; text-align: justify;">
-        Language-Queried Audio Source Separation (LASS) enables open-vocabulary sound separation by conditioning on natural
-        language descriptions. While existing LASS methods rely on task-specific training, we explore whether pretrained
-        diffusion models, originally designed for audio generation, can inherently perform separation without additional
-        training. In this study, we introduce a training-free framework that leverages generative priors for zero-shot
-        LASS. We examine naïve adaptations of diffusion models to LASS and identify key limitations arising from
-        modality-specific challenges. To address these issues, we propose <strong>Diffusion-Guided Mask Optimization (DGMO)</strong>,
-        a test-time optimization framework that refines spectrogram masks for precise, input-aligned separation. Our
-        approach demonstrates that pretrained diffusion models can be effectively repurposed for source separation,
-        achieving competitive performance without task-specific supervision. This work expands the application of
-        diffusion models beyond generation, establishing a new paradigm for zero-shot audio separation.
+        Language-queried Audio Source Separation (LASS) enables open-vocabulary sound separation via natural language queries. 
+        While existing methods rely on task-specific training, we explore whether pretrained diffusion models, originally designed for audio generation, can inherently perform separation without further training. 
+        In this study, we introduce a training-free framework leveraging generative priors for zero-shot LASS. 
+        Analyzing naive adaptations, we identify key limitations arising from modality-specific challenges. 
+        To address these issues, we propose Diffusion-Guided Mask Optimization (DGMO), a test-time optimization framework that refines spectrogram masks for precise, input-aligned separation. 
+        Our approach effectively repurposes pretrained diffusion models for source separation, achieving competitive performance without task-specific supervision. 
+        This work expands the application of diffusion models beyond generation, establishing a new paradigm for zero-shot audio separation.
       </p>
     </section>
 
@@ -126,7 +123,12 @@
       <figure>
         <img src="dgmo_0522_compressed.png" alt="DGMO framework" class="img-fluid center" style="max-width: 90%;" />
         <p style="width: 90%; margin: 0 auto; text-align: justify;">
-          <strong>The overall process of the Diffusion-Guided Mask Optimization (DGMO).</strong> We introduce a novel training-free LASS framework based on diffusion models, integrating mask optimization and generative refinement into a unified process composed of reference generation and mask optimization stages.</p>
+          We present <strong>Diffusion-Guided Mask Optimization (DGMO)</strong>, a novel training-free framework for language-queried audio source separation (LASS). 
+          As illustrated above, DGMO operates in two stages: <em>reference generation</em> and <em>mask optimization</em>. 
+          First, given a natural language query and an input mixture, we use a pretrained text-to-audio diffusion model with DDIM inversion to synthesize reference signals that reflect the semantic content of the query while preserving the structure of the mixture. 
+          These references are then used to supervise the optimization of a spectrogram mask, applied directly to the magnitude domain to ensure alignment with the input signal. 
+          The loss is defined in the mel-spectrogram space to match the diffusion model's conditioning domain, allowing gradient-based optimization. 
+          This hybrid approach unifies generative priors and explicit masking to enable zero-shot, input-consistent LASS without any task-specific training.
         </p>
       </figure>
     </section>
