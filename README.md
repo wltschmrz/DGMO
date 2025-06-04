@@ -1,9 +1,9 @@
 ### DGMO-Separation Webpage
 This repository hosts the project page for **DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization**.
 
-🔗 **Visit the project website:** [https://wltschmrz.github.io/DGMO-Separation-Web/](https://wltschmrz.github.io/DGMO/)
+🔗 **Visit the project website:** [https://wltschmrz.github.io/DGMO/](https://wltschmrz.github.io/DGMO/)
 
-📄 **The arXiv link of the paper:** [https://DGMO_paper.](https://arxiv.org/abs/2506.02858)
+📄 **The arXiv link of the paper:** [https://arxiv.org/abs/2506.02858](https://arxiv.org/abs/2506.02858)
 
 ```bash
 DGMO-Separation-Web/
