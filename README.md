@@ -3,7 +3,7 @@ This repository hosts the project page for **DGMO: Training-Free Audio Source Se
 
 🔗 **Visit the project website:** [https://wltschmrz.github.io/DGMO-Separation-Web/](https://wltschmrz.github.io/DGMO/)
 
-📄 **The arXiv link of the paper:** [https:~~](https://DGMO_paper.)
+📄 **The arXiv link of the paper:** [https://DGMO_paper.](https://arxiv.org/abs/2506.02858)
 
 ```bash
 DGMO-Separation-Web/
