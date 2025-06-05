@@ -7,7 +7,7 @@
 
 # DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization (Interspeech 2025)
 
-[[Paper]](https://arxiv.org/abs/xxxx.xxxxx) [[Project Page]](https://wltschmrz.github.io/DGMO/)
+[[Paper]](https://arxiv.org/abs/2506.02858) [[Project Page]](https://wltschmrz.github.io/DGMO/)
 
 by [Geonyoung Lee](https://wltschmrz.github.io/)\*, [Geonhee Han](https://chaksseu.github.io/)\*, [Paul Hongsuck Seo](https://phseo.github.io/)  
 \*Equal contribution
@@ -51,10 +51,12 @@ Our implementation builds on several open-source projects including [AudioLDM](h
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
+※ This BibTeX entry is a placeholder. Please refer to the official Interspeech 2025 proceedings for the final citation.
 @inproceedings{lee2025dgmo,
   title={DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization},
-  author={Lee, Geonyoung and Han, Geonhee and Seo, Paul Hongsuck},
+  author={Geonyoung Lee and Geonhee Han and Paul Hongsuck Seo},
   booktitle={Proceedings of the Annual Conference of the International Speech Communication Association (INTERSPEECH)},
   year={2025}
 }
+
 
