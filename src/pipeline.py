@@ -1,7 +1,7 @@
 import os
 import sys
 proj_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-src_dir = os.path.join(proj_dir, 'src')
+sys.path.append(proj_dir)
 
 import torch
 import torch.nn as nn
@@ -10,6 +10,7 @@ import numpy as np
 from src.models import AudioLDM
 from src.models import Mask
 from src.utils import load_config, save_wav_file, AudioDataProcessor, make_unique_dir
+import argparse
 
 class DGMO(nn.Module):
     def __init__(self, *, config_path="./configs/DGMO.yaml", device="cuda", **kwargs):
@@ -31,10 +32,7 @@ class DGMO(nn.Module):
         match repo_type:
             case "audioldm":
                 self.ldm = AudioLDM(ckpt=self.repo_id, device=self.device, **kwargs)
-            # case "audioldm2":
-            #     self.ldm = AudioLDM2(ckpt=self.repo_id, device=self.device, **kwargs)
-            # case "auffusion":
-            #     self.ldm = Auffusion(ckpt=self.repo_id, device=self.device, **kwargs)
+
             case _:
                 raise ValueError(f"Invalid repo_id: {self.repo_id}")
             
@@ -44,12 +42,6 @@ class DGMO(nn.Module):
         for param in self.ldm.parameters():
             param.requires_grad = False 
 
-        # for param in self.ldm.vae.parameters():
-        #     param.requires_grad = False  
-        # for param in self.ldm.stft.parameters():
-        #     param.requires_grad = False 
-        # for param in self.ldm.model.parameters():
-        #     param.requires_grad = False  
 
     def _apply_config(self, config):
         for key, value in config.items():
@@ -142,60 +134,25 @@ class DGMO(nn.Module):
 
         save_path = os.path.join(save_dir, save_fname)
         save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
-
-        # ref_wav = self.ldm.vae.decode_to_waveform(ref_mels)  ####
-        # print(ref_wav.shape)
-        # ref_wav = ref_wav.mean(axis=0)
-        # print(ref_wav.shape)
-        # # try:
-        # ref_wav = np.expand_dims(ref_wav, axis=0)
-        # # except: pass
-        # print(ref_wav.shape)
-        # # ref_wav = self.processor.prepare_wav(ref_wav)
-        # # print(ref_wav.shape)
-        # ref_wav = ref_wav.astype(np.float32)  # float64 → float32
-        # ref_wav = ref_wav / 32768.0
-        # save_path = os.path.join(save_dir, save_fname)
-        # save_path_ref = os.path.join(save_dir, "ref.wav")
-        # save_wav_file(filename=save_path, wav_np=msked_wav, target_sr=self.processor.sampling_rate)
-        # save_wav_file(filename=save_path_ref, wav_np=ref_wav, target_sr=self.processor.sampling_rate)
         
         return msked_wav, ref_mels.mean(dim=0)  # np[1,N]  ####
 
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_path', type=str, default="./configs/DGMO.yaml")
+    parser.add_argument('--mix_wav_path', type=str, required=True)
+    parser.add_argument('--text', type=str, required=True)
+    parser.add_argument('--save_dir', type=str, default="./results")
+    parser.add_argument('--save_fname', type=str, default="sample.wav")
+    parser.add_argument('--device', type=str, default="cuda:0")
+    args = parser.parse_args()
 
-    config = "./configs/DGMO.yaml"
+    dgmo = DGMO(config_path=args.config_path, device=args.device)
 
-    mix_path = "./data/samples/Cat_n_Footstep.wav"
-    ref_paths = [
-        "./data/samples/A_cat_meowing.wav",
-        "./data/samples/Foot_steps_on_the_wooden_floor.wav"
-    ]
-    texts = [
-        "A cat meowing",
-        "Foot steps on the wooden floor"
-    ]
-
-    dgmo = DGMO(config_path=config, device="cuda",
-                # iteration=iter
-                )
-
-
-    ########## TESTING BASIC DGMO ##########
-    
-    save_dir = make_unique_dir("./test/results", "single")
-    mel_paths = [
-        os.path.join(save_dir, f"cat.png"),
-        os.path.join(save_dir, f"step.png")
-    ]
-    sep_paths = [
-        os.path.join(save_dir, f"cat.wav"),
-        os.path.join(save_dir, f"step.wav")
-    ]
-
-    for i in range(2):
-        sep_wav = dgmo.inference(
-            mix_wav_path=mix_path,
-            text=texts[i],
-            save_path=sep_paths[i]
-        )
+    dgmo.inference(
+        mix_wav_path=args.mix_wav_path,
+        text=args.text,
+        save_dir=args.save_dir,
+        save_fname=args.save_fname
+    )
