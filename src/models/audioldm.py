@@ -187,6 +187,7 @@ class AudioLDM(nn.Module):
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
         callback: Optional[Callable[[int, int, torch.Tensor], None]] = None,
         callback_steps: Optional[int] = 1,
+        seed: Optional[int] = 42, 
     ):
         r"""
         - cross_attention_kwargs (`dict`, optional): cross attention 설정.
@@ -206,6 +207,10 @@ class AudioLDM(nn.Module):
         t_enc = int(transfer_strength * num_inference_steps)
         used_timesteps = all_timesteps[-t_enc:]
         
+        generator = None
+        if seed is not None:
+            generator = torch.Generator(device=device).manual_seed(seed)
+
         extra_step_kwargs = self.pipe.prepare_extra_step_kwargs(generator=None, eta=0.0)  # DDIM eta 설정
 
         num_warmup_steps = len(used_timesteps) - t_enc * self.scheduler.order

@@ -34,9 +34,58 @@ Unlike traditional LASS approaches, DGMO requires no training and generalizes ac
 
 ## Installation
 
-<!-- To be updated -->
+We recommend using `conda` to create a clean environment:
+
+```bash
+conda create -n dgmo python=3.10 -y
+conda activate dgmo
+pip install -r requirements.txt
+```
+
+Make sure you have `ffmpeg` installed if you work with audio files:
+
+```bash
+conda install -c conda-forge ffmpeg
+```
+
 
 ## Inference
+
+You can perform source separation using DGMO with a simple shell script.
+
+### Step 1: Set Up `inference.sh`
+
+Modify the following variables in the script:
+
+```bash
+# inference.sh
+
+# Input mixture path
+MIX_PATH="./data/samples/dog_barking_and_cat_meowing.wav"
+
+# Text queries (e.g., sources you want to extract)
+TEXTS=("dog barking" "cat meowing")
+```
+
+Each text query corresponds to a target sound to be separated.
+
+---
+
+### Step 2: Run Inference
+
+Run the script as follows:
+
+```bash
+bash inference.sh
+```
+
+This will:
+
+- Run DGMO inference for each query  
+- Save the separated audio as `.wav` files  
+- Create a timestamped directory for organized output (e.g., `./results/run_20250607_170502/`)
+
+
 
 ## Acknowledgement
 
