@@ -86,21 +86,22 @@ This will:
 - Create a timestamped directory for organized output (e.g., `./results/run_20250607_170502/`)
 
 
-
 ## Acknowledgement
 
 Our implementation builds on several open-source projects including [AudioLDM](https://github.com/haoheliu/AudioLDM), [Auffusion](https://github.com/happylittlecat2333/Auffusion), and [Peekaboo](https://github.com/RyannDaGreat/Peekaboo). We sincerely thank the authors for their contributions.
 
 ## Attribution
 
-This project includes components under CC BY-NC-SA 4.0. See `LICENSE` for full terms.
-This repository uses components and ideas from the following works:
+This project includes components licensed under **CC BY-NC-SA 4.0**.  
+See [`LICENSE`](./LICENSE) for full terms.
 
-- **[Auffusion](https://github.com/happylittlecat2333/Auffusion)** – Licensed under CC BY-NC-SA 4.0
-- **[AudioLDM](https://github.com/haoheliu/AudioLDM)** – Licensed under CC BY-NC-SA 4.0
-- **[AudioLDM2](https://github.com/haoheliu/AudioLDM2)** – Licensed under CC BY-NC-SA 4.0
+Specifically, we incorporate ideas and/or pretrained models from:
 
-Please note that this project with those models is strictly for non-commercial research and educational purposes only.
+- **[Auffusion](https://github.com/happylittlecat2333/Auffusion)** — CC BY-NC-SA 4.0
+- **[AudioLDM](https://github.com/haoheliu/AudioLDM)** — CC BY-NC-SA 4.0
+- **[AudioLDM2](https://github.com/haoheliu/AudioLDM2)** — CC BY-NC-SA 4.0
+
+🔒 **Note**: This project is for **non-commercial research and educational use only**, as required by the licenses of the incorporated models.
 
 ---
 
