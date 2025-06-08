@@ -19,3 +19,23 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+=======================================================================
+
+⚠️ Third-party Components and Pretrained Models
+
+This project incorporates third-party code and pretrained models from:
+
+- Auffusion (CC BY-NC-SA 4.0)
+- AudioLDM (CC BY-NC-SA 4.0)
+- AudioLDM2 (CC BY-NC-SA 4.0)
+
+Therefore, even though the original source code is licensed under the MIT License,
+**the entire project is effectively subject to the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
+
+This means:
+- Commercial use is **not allowed**.
+- Any adaptations must be licensed under the same CC BY-NC-SA 4.0 license.
+- Attribution to the original authors and sources must be provided.
+
+For full license terms, see: https://creativecommons.org/licenses/by-nc-sa/4.0/
