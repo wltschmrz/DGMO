@@ -91,7 +91,7 @@ This will:
 
 Our implementation builds on several open-source projects including [AudioLDM](https://github.com/haoheliu/AudioLDM), [Auffusion](https://github.com/happylittlecat2333/Auffusion), and [Peekaboo](https://github.com/RyannDaGreat/Peekaboo). We sincerely thank the authors for their contributions.
 
-
+📄 This project includes components under CC BY-NC-SA 4.0. See `LICENSE` for full terms.
 
 ---
 
