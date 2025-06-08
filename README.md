@@ -69,8 +69,6 @@ TEXTS=("dog barking" "cat meowing")
 
 Each text query corresponds to a target sound to be separated.
 
----
-
 ### Step 2: Run Inference
 
 Run the script as follows:
@@ -85,6 +83,7 @@ This will:
 - Save the separated audio as `.wav` files  
 - Create a timestamped directory for organized output (e.g., `./results/run_20250607_170502/`)
 
+---
 
 ## Acknowledgement
 
