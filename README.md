@@ -9,7 +9,7 @@
 
 [[Paper]](https://arxiv.org/abs/2506.02858) [[Project Page]](https://wltschmrz.github.io/DGMO/)
 
-by [Geonyoung Lee](https://adjoining-galleon-086.notion.site/Curriculum-Vitae-c44c7df64fcb4977b96bcdd8379670ad)\*, [Geonhee Han](https://chaksseu.github.io/)\*, [Paul Hongsuck Seo](https://phseo.github.io/)  
+by [Geonyoung Lee](https://wltschmrz.github.io/)\*, [Geonhee Han](https://chaksseu.github.io/)\*, [Paul Hongsuck Seo](https://phseo.github.io/)  
 \*Equal contribution
 
 This is the official repository for our Interspeech 2025 paper:  
