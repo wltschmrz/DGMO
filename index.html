@@ -7,7 +7,8 @@
   <title>DGMO: Training‑Free Audio Source Separation through Diffusion‑Guided Mask Optimization</title>
 
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet" />
+<!--   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet" /> -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Castoro&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
@@ -19,10 +20,15 @@
       font-size: 18px;
     }
     h1, h2, h3 {
-      font-family: "Google Sans", sans-serif;
+/*       font-family: "Google Sans", sans-serif; */
+      font-family: "Noto Sans", sans-serif; 
     }
-    code, pre {
+/*     code, pre {
       font-family: "Castoro", serif;
+      font-size: 16px;
+    } */
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 16px;
     }
     .center {
@@ -58,6 +64,15 @@
     }
     .conf-header img {
       height: 36px;
+    }
+    .code-box {
+      background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px;
+      padding: 16px; max-width: 720px; margin: 0 auto; overflow-x: auto;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px; border: none; border-radius: 6px;
+      padding: 6px 10px; font-size: 0.85rem; background: #212529; color: #fff; cursor: pointer;
     }
   </style>
 </head>
@@ -102,10 +117,10 @@
       </div>
     
       <div class="d-flex justify-content-center flex-wrap gap-3 mb-4">
-        <a href="https://arxiv.org/abs/2506.02858" class="btn btn-dark" target="_blank">
+        <a href="https://arxiv.org/abs/2506.02858" class="btn btn-dark" target="_blank" rel="noopener noreferrer">
           <i class="fa fa-file-alt me-2"></i>Paper
         </a>
-        <a href="https://github.com/wltschmrz/DGMO/" class="btn btn-dark" target="_blank">
+        <a href="https://github.com/wltschmrz/DGMO/" class="btn btn-dark" target="_blank" rel="noopener noreferrer">
           <i class="fab fa-github me-2"></i>Code
         </a>
       </div>      
@@ -159,13 +174,13 @@
           <tbody>
             <tr>
               <td>Babbling</td>
-              <td><img src="qualitative_examples/Babbling_cat meowing/mix_Babbling_cat meowing.png" height="100" /></td>
+              <td><img src="qualitative_examples/Babbling_cat%20meowing/mix_Babbling_cat%20meowing.png" height="100" loading="lazy" /></td>
               <td><img src="qualitative_examples/Babbling_cat meowing/sep_Babbling.png" height="100" /></td>
               <td><img src="qualitative_examples/Babbling_cat meowing/gt_Babbling.png" height="100" /></td>
             </tr>
             <tr>
               <td></td>
-              <td><audio controls><source src="qualitative_examples/Babbling_cat meowing/mix_Babbling_cat meowing.wav" type="audio/wav" /></audio></td>
+              <td><audio controls preload="none"><source src="qualitative_examples/Babbling_cat meowing/mix_Babbling_cat meowing.wav" type="audio/wav" /></audio></td>
               <td><audio controls><source src="qualitative_examples/Babbling_cat meowing/sep_Babbling.wav" type="audio/wav" /></audio></td>
               <td><audio controls><source src="qualitative_examples/Babbling_cat meowing/gt_Babbling.wav" type="audio/wav" /></audio></td>
             </tr>
@@ -213,7 +228,7 @@
 <hr style="width: 90%; height: 3px; background-color: #aaa; border: none; margin: 40px auto;">
     
     <!-- BIBTEX -->
-    <section class="section mt-5" id="bibtex">
+<!--     <section class="section mt-5" id="bibtex">
       <div class="container content">
         <h2 style="font-weight: bold;" class="text-center">BibTeX</h2>
         <pre>
@@ -230,7 +245,24 @@
           </code>
         </pre>
       </div>
-    </section>
+    </section> -->
+    <section class="section mt-5" id="bibtex">
+      <div class="container content text-center">
+        <h2 style="font-weight: bold;">BibTeX</h2>
+        <div class="code-box">
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('bibtex-code').innerText.trim())">Copy</button>
+          <pre><code id="bibtex-code">@inproceedings{lee25g_interspeech,
+  title     = {{DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization}},
+  author    = {{Geonyoung Lee and Geonhee Han and Paul Hongsuck Seo}},
+  year      = {{2025}},
+  booktitle = {{Interspeech 2025}},
+  pages     = {{4983--4987}},
+  doi       = {{10.21437/Interspeech.2025-840}},
+  issn      = {{2958-1796}},
+}</code></pre>
+        </div>
+      </div>
+    </section>  
   </div>
 </body>
 
