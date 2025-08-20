@@ -109,11 +109,13 @@ Specifically, we incorporate ideas and/or pretrained models from:
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
-※ This BibTeX entry is a placeholder. Please refer to the official Interspeech 2025 proceedings for the final citation.
-@inproceedings{lee2025dgmo,
-  title={DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization},
-  author={Geonyoung Lee and Geonhee Han and Paul Hongsuck Seo},
-  booktitle={Proceedings of the Annual Conference of the International Speech Communication Association (INTERSPEECH)},
-  year={2025}
+@inproceedings{lee25g_interspeech,
+  title     = {{DGMO: Training-Free Audio Source Separation through Diffusion-Guided Mask Optimization}},
+  author    = {{Geonyoung Lee and Geonhee Han and Paul Hongsuck Seo}},
+  year      = {{2025}},
+  booktitle = {{Interspeech 2025}},
+  pages     = {{4983--4987}},
+  doi       = {{10.21437/Interspeech.2025-840}},
+  issn      = {{2958-1796}},
 }
 ```
